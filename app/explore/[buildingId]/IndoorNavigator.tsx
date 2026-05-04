@@ -1,7 +1,10 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Search, Navigation, ArrowRight, Clock, Ruler, Accessibility, X, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import {
+  Search, Navigation, ArrowRight, Clock, Ruler,
+  Accessibility, ChevronRight, MapPin, CheckCircle2, RotateCcw, X,
+} from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatWalkTime, formatDistance } from "@/lib/utils/format";
 
@@ -20,25 +23,35 @@ interface RouteResult {
   totalDistanceEstimate: number; totalWalkTimeEstimate: number;
 }
 
+const TYPE_ICONS: Record<string, string> = {
+  ENTRANCE: "🚪", EXIT: "🚪", RESTROOM: "🚻", ELEVATOR: "🛗",
+  STAIRCASE: "🪜", RECEPTION: "🛎", ROOM: "🏠", OFFICE: "💼",
+  LECTURE_HALL: "🎓", LANDMARK: "📍", EMERGENCY_EXIT: "🚨",
+  HALLWAY_POINT: "🔵", CORRIDOR_JUNCTION: "🔵", DOOR: "🚪", RAMP: "♿",
+};
+
+const QUICK_TYPES = ["RESTROOM", "ELEVATOR", "EXIT", "RECEPTION", "ENTRANCE"];
+
 export function IndoorNavigator({
   buildingId, nodes, floors,
 }: {
   buildingId: string; nodes: Node[]; floors: Floor[];
 }) {
-  const [search, setSearch] = useState("");
   const [fromId, setFromId] = useState("");
   const [toId, setToId] = useState("");
   const [accessible, setAccessible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [route, setRoute] = useState<RouteResult | null>(null);
   const [error, setError] = useState("");
-  const [step, setStep] = useState(0);
+  const [activeStep, setActiveStep] = useState(0);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchTarget, setSearchTarget] = useState<"from" | "to">("to");
+  const [query, setQuery] = useState("");
 
-  const filtered = search.length > 0
-    ? nodes.filter((n) =>
-        n.name.toLowerCase().includes(search.toLowerCase()) ||
-        n.type.toLowerCase().includes(search.toLowerCase())
-      )
+  const fromNode = nodes.find((n) => n.id === fromId);
+  const toNode = nodes.find((n) => n.id === toId);
+  const filtered = query
+    ? nodes.filter((n) => n.name.toLowerCase().includes(query.toLowerCase()))
     : nodes;
 
   async function navigate() {
@@ -46,8 +59,7 @@ export function IndoorNavigator({
     setLoading(true);
     setError("");
     setRoute(null);
-    setStep(0);
-
+    setActiveStep(0);
     try {
       const res = await fetch("/api/route", {
         method: "POST",
@@ -65,174 +77,274 @@ export function IndoorNavigator({
     }
   }
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Left: Search & Form */}
+  function openSearch(target: "from" | "to") {
+    setSearchTarget(target);
+    setQuery("");
+    setSearchOpen(true);
+  }
+
+  function pickNode(id: string) {
+    if (searchTarget === "from") setFromId(id);
+    else setToId(id);
+    setSearchOpen(false);
+  }
+
+  function reset() {
+    setRoute(null);
+    setError("");
+    setFromId("");
+    setToId("");
+    setActiveStep(0);
+  }
+
+  // ── Route view ───────────────────────────────────────────────────────────────
+  if (route) {
+    const step = route.steps[activeStep];
+    const isLast = activeStep === route.steps.length - 1;
+    return (
       <div className="space-y-6">
-        {/* Search */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6">
-          <h2 className="font-bold text-lg mb-4">Find a Location</h2>
-          <div className="relative mb-4">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search rooms, offices, restrooms…"
-              className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#141414] transition-colors"
-            />
+        {/* Summary */}
+        <div className="bg-[#141414] text-white rounded-3xl p-6 flex gap-8 relative overflow-hidden">
+          <div>
+            <p className="text-xs opacity-40 uppercase tracking-widest mb-1 flex items-center gap-1"><Ruler className="w-3 h-3" /> Distance</p>
+            <p className="text-3xl font-bold">{formatDistance(route.totalDistanceEstimate)}</p>
+          </div>
+          <div>
+            <p className="text-xs opacity-40 uppercase tracking-widest mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Walk time</p>
+            <p className="text-3xl font-bold">{formatWalkTime(route.totalWalkTimeEstimate)}</p>
+          </div>
+          <div className="absolute -right-8 -bottom-8 w-40 h-40 bg-white/5 rounded-full blur-3xl" />
+        </div>
+
+        {/* Step navigator */}
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
+          {/* Progress */}
+          <div className="h-1.5 bg-slate-100">
+            <div className="h-full bg-[#3B82F6] transition-all" style={{ width: `${((activeStep + 1) / route.steps.length) * 100}%` }} />
           </div>
 
-          <div className="space-y-2 max-h-48 overflow-y-auto">
-            {filtered.slice(0, 10).map((node) => (
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <span className="font-mono text-xs text-slate-400">Step {activeStep + 1} of {route.steps.length}</span>
+              {(step.edge.requiresStairs || step.edge.requiresElevator) && (
+                <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">
+                  {step.edge.requiresElevator ? "🛗 Elevator" : "🪜 Stairs"}
+                </span>
+              )}
+            </div>
+            <p className="text-xl font-bold text-[#141414] mb-3">{step.instruction}</p>
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <span>{step.fromNode.name}</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+              <span className="font-semibold text-[#141414]">{step.toNode.name}</span>
+            </div>
+          </div>
+
+          <div className="flex border-t border-slate-100">
+            <button
+              onClick={() => setActiveStep((s) => Math.max(0, s - 1))}
+              disabled={activeStep === 0}
+              className="flex-1 py-4 text-sm font-semibold text-slate-500 disabled:opacity-30 hover:bg-slate-50 transition-colors border-r border-slate-100"
+            >
+              ← Prev
+            </button>
+            {isLast ? (
               <button
-                key={node.id}
-                onClick={() => setToId(node.id)}
-                className={cn(
-                  "w-full text-left px-4 py-3 rounded-xl text-sm transition-all",
-                  toId === node.id
-                    ? "bg-[#141414] text-white"
-                    : "hover:bg-slate-50 text-[#141414]"
-                )}
+                onClick={reset}
+                className="flex-1 py-4 text-sm font-bold text-[#10b981] flex items-center justify-center gap-2 hover:bg-green-50 transition-colors"
               >
-                <span className="font-semibold">{node.name}</span>
-                {node.floor && (
-                  <span className={cn("ml-2 text-xs", toId === node.id ? "text-white/50" : "text-slate-400")}>
-                    {node.floor.name}
-                  </span>
-                )}
+                <CheckCircle2 className="w-4 h-4" /> Arrived!
               </button>
-            ))}
-            {filtered.length === 0 && (
-              <p className="text-slate-400 text-sm text-center py-4">No locations found</p>
+            ) : (
+              <button
+                onClick={() => setActiveStep((s) => s + 1)}
+                className="flex-1 py-4 text-sm font-bold text-[#141414] hover:bg-slate-50 transition-colors"
+              >
+                Next →
+              </button>
             )}
           </div>
         </div>
 
-        {/* Navigate form */}
-        <div className="bg-white rounded-3xl border border-slate-200 p-6">
-          <h2 className="font-bold text-lg mb-4">Get Directions</h2>
-          <div className="space-y-3">
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">From</label>
-              <select
-                value={fromId}
-                onChange={(e) => setFromId(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#141414] appearance-none"
+        {/* All steps */}
+        <div>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">All steps</p>
+          <div className="space-y-2">
+            {route.steps.map((s, i) => (
+              <button
+                key={i}
+                onClick={() => setActiveStep(i)}
+                className={cn(
+                  "w-full text-left rounded-2xl px-4 py-3 flex items-center gap-3 transition-all text-sm",
+                  i === activeStep ? "bg-[#141414] text-white" : i < activeStep ? "bg-slate-50 text-slate-400" : "bg-white border border-slate-200 text-[#141414]"
+                )}
               >
-                <option value="">Select starting point…</option>
-                {nodes.map((n) => (
-                  <option key={n.id} value={n.id}>{n.name}{n.floor ? ` (${n.floor.name})` : ""}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">To</label>
-              <select
-                value={toId}
-                onChange={(e) => setToId(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#141414] appearance-none"
-              >
-                <option value="">Select destination…</option>
-                {nodes.filter((n) => n.id !== fromId).map((n) => (
-                  <option key={n.id} value={n.id}>{n.name}{n.floor ? ` (${n.floor.name})` : ""}</option>
-                ))}
-              </select>
-            </div>
-
-            <label className="flex items-center gap-3 cursor-pointer py-2">
-              <input type="checkbox" checked={accessible} onChange={(e) => setAccessible(e.target.checked)} className="rounded" />
-              <span className="text-sm font-medium flex items-center gap-2">
-                <Accessibility className="w-4 h-4 text-blue-500" /> Accessible route (avoid stairs)
-              </span>
-            </label>
-
-            <button
-              onClick={navigate}
-              disabled={!fromId || !toId || loading}
-              className="w-full bg-[#3B82F6] text-white font-bold py-3.5 rounded-2xl hover:bg-blue-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                </svg>
-              ) : (
-                <Navigation className="w-4 h-4" />
-              )}
-              Get Directions
-            </button>
+                <span className={cn("font-mono text-xs w-5 shrink-0", i === activeStep ? "opacity-40" : "")}>{String(i + 1).padStart(2, "0")}</span>
+                <span className={cn("flex-1 truncate", i < activeStep && "line-through")}>{s.instruction}</span>
+                {i === activeStep && <ChevronRight className="w-4 h-4 opacity-40 shrink-0" />}
+              </button>
+            ))}
           </div>
+        </div>
+
+        <button onClick={reset} className="flex items-center gap-2 text-slate-400 text-sm mx-auto">
+          <RotateCcw className="w-3.5 h-3.5" /> Start over
+        </button>
+      </div>
+    );
+  }
+
+  // ── Planner view ─────────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-6">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl px-5 py-4 text-sm flex items-center justify-between">
+          {error}
+          <button onClick={() => setError("")}><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {/* From / To card */}
+      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden">
+        <button
+          onClick={() => openSearch("from")}
+          className="w-full px-6 py-5 flex items-center gap-4 hover:bg-slate-50 transition-colors border-b border-slate-100"
+        >
+          <div className="w-3 h-3 rounded-full border-2 border-slate-400 shrink-0" />
+          <span className={cn("flex-1 text-left text-sm", fromId ? "font-semibold text-[#141414]" : "text-slate-400")}>
+            {fromNode ? fromNode.name : "Set starting point"}
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+        </button>
+        <div className="h-px bg-slate-100 mx-6" />
+        <button
+          onClick={() => openSearch("to")}
+          className="w-full px-6 py-5 flex items-center gap-4 hover:bg-slate-50 transition-colors"
+        >
+          <MapPin className="w-3.5 h-3.5 text-[#3B82F6] shrink-0" />
+          <span className={cn("flex-1 text-left text-sm", toId ? "font-semibold text-[#141414]" : "text-slate-400")}>
+            {toNode ? toNode.name : "Where do you want to go?"}
+          </span>
+          <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" />
+        </button>
+      </div>
+
+      {/* Accessibility */}
+      <label className="flex items-center gap-4 bg-white rounded-2xl border border-slate-200 px-6 py-4 cursor-pointer">
+        <Accessibility className="w-5 h-5 text-blue-500 shrink-0" />
+        <span className="text-sm font-medium flex-1">Accessible route (avoid stairs)</span>
+        <div
+          onClick={(e) => { e.preventDefault(); setAccessible((a) => !a); }}
+          className={cn("w-12 h-6 rounded-full transition-colors relative shrink-0", accessible ? "bg-[#3B82F6]" : "bg-slate-200")}
+        >
+          <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform", accessible ? "translate-x-7" : "translate-x-1")} />
+        </div>
+      </label>
+
+      {/* Go button */}
+      <button
+        onClick={navigate}
+        disabled={!fromId || !toId || loading}
+        className="w-full bg-[#141414] text-white font-bold py-5 rounded-2xl disabled:opacity-40 flex items-center justify-center gap-3 text-base hover:bg-[#2d2d2d] transition-colors"
+      >
+        {loading ? (
+          <svg className="animate-spin w-5 h-5" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+          </svg>
+        ) : <Navigation className="w-5 h-5" />}
+        Get Directions
+      </button>
+
+      {/* Quick access */}
+      <div>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Quick access</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {nodes
+            .filter((n) => QUICK_TYPES.includes(n.type))
+            .slice(0, 6)
+            .map((n) => (
+              <button
+                key={n.id}
+                onClick={() => setToId(n.id)}
+                className={cn(
+                  "rounded-2xl border px-4 py-4 text-left transition-all",
+                  toId === n.id ? "border-[#141414] bg-[#141414] text-white" : "border-slate-200 bg-white hover:border-[#141414]"
+                )}
+              >
+                <span className="text-2xl block mb-1">{TYPE_ICONS[n.type] ?? "📍"}</span>
+                <p className={cn("text-sm font-semibold truncate", toId === n.id ? "text-white" : "text-[#141414]")}>{n.name}</p>
+                {n.floor && <p className={cn("text-xs", toId === n.id ? "text-white/50" : "text-slate-400")}>{n.floor.name}</p>}
+              </button>
+            ))}
         </div>
       </div>
 
-      {/* Right: Route result */}
+      {/* All locations */}
       <div>
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-4 text-sm">
-            {error}
-          </div>
-        )}
-
-        {route && (
-          <div className="space-y-4">
-            {/* Summary card */}
-            <div className="bg-[#141414] text-white rounded-3xl p-6 relative overflow-hidden">
-              <p className="font-mono text-xs opacity-40 uppercase tracking-widest mb-3">Route</p>
-              <div className="flex gap-8">
-                <div>
-                  <div className="text-sm opacity-50 flex items-center gap-1 mb-1"><Ruler className="w-3 h-3" /> Distance</div>
-                  <p className="text-2xl font-bold">{formatDistance(route.totalDistanceEstimate)}</p>
-                </div>
-                <div>
-                  <div className="text-sm opacity-50 flex items-center gap-1 mb-1"><Clock className="w-3 h-3" /> Walk time</div>
-                  <p className="text-2xl font-bold">{formatWalkTime(route.totalWalkTimeEstimate)}</p>
-                </div>
+        <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">All locations</p>
+        <div className="space-y-1">
+          {nodes.slice(0, 12).map((n) => (
+            <button
+              key={n.id}
+              onClick={() => setToId(n.id)}
+              className={cn(
+                "w-full text-left rounded-2xl border px-4 py-3.5 flex items-center gap-3 transition-all",
+                toId === n.id ? "bg-[#141414] border-transparent text-white" : "bg-white border-slate-200 hover:border-slate-300"
+              )}
+            >
+              <span className="text-lg shrink-0">{TYPE_ICONS[n.type] ?? "📍"}</span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold truncate">{n.name}</p>
+                {n.floor && (
+                  <p className={cn("text-xs", toId === n.id ? "opacity-50" : "text-slate-400")}>{n.floor.name}</p>
+                )}
               </div>
-              <div className="absolute -right-8 -bottom-8 w-32 h-32 bg-white/5 rounded-full blur-2xl" />
-            </div>
-
-            {/* Step-by-step */}
-            <div className="space-y-2">
-              {route.steps.map((s, i) => (
-                <div
-                  key={i}
-                  onClick={() => setStep(i)}
-                  className={cn(
-                    "rounded-2xl border p-4 cursor-pointer transition-all",
-                    step === i
-                      ? "bg-[#141414] text-white border-transparent"
-                      : "bg-white border-slate-200 hover:border-slate-300"
-                  )}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className={cn("font-mono text-xs font-bold w-6 text-center shrink-0", step === i ? "opacity-40" : "text-slate-400")}>
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <div>
-                      <p className="font-semibold text-sm">{s.instruction}</p>
-                      <div className={cn("flex items-center gap-1 mt-0.5 text-xs", step === i ? "opacity-40" : "text-slate-400")}>
-                        {s.fromNode.name} <ArrowRight className="w-3 h-3" /> {s.toNode.name}
-                      </div>
-                    </div>
-                    {(s.edge.requiresStairs || s.edge.requiresElevator) && (
-                      <span className={cn("ml-auto text-xs font-bold px-2 py-0.5 rounded-lg", step === i ? "bg-white/20 text-white" : "bg-blue-50 text-blue-700")}>
-                        {s.edge.requiresStairs ? "Stairs" : "Lift"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!route && !error && (
-          <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center text-slate-400">
-            <Navigation className="w-8 h-8 mx-auto mb-3" />
-            <p className="font-medium">Choose a starting point and destination to get directions</p>
-          </div>
-        )}
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* Search overlay */}
+      {searchOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6">
+          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[80vh] flex flex-col">
+            <div className="p-5 border-b border-slate-100 flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  autoFocus
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={`Search ${searchTarget === "from" ? "starting point" : "destination"}…`}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:border-[#141414]"
+                />
+              </div>
+              <button onClick={() => setSearchOpen(false)} className="p-2 rounded-xl hover:bg-slate-100">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="overflow-y-auto p-3">
+              {filtered.slice(0, 30).map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => pickNode(n.id)}
+                  className="w-full text-left px-3 py-3 rounded-xl flex items-center gap-3 hover:bg-slate-50 transition-colors"
+                >
+                  <span className="text-xl shrink-0">{TYPE_ICONS[n.type] ?? "📍"}</span>
+                  <div>
+                    <p className="text-sm font-semibold text-[#141414]">{n.name}</p>
+                    {n.floor && <p className="text-xs text-slate-400">{n.floor.name}</p>}
+                  </div>
+                </button>
+              ))}
+              {filtered.length === 0 && (
+                <p className="text-center text-slate-400 py-8 text-sm">No locations found</p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

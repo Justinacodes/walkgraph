@@ -10,6 +10,7 @@ const tabs = [
   { label: "Nodes & Edges", href: "/nodes" },
   { label: "Route Tester", href: "/routes" },
   { label: "QR Codes", href: "/qr" },
+  { label: "Accessibility", href: "/accessibility" },
 ];
 
 export default async function BuildingLayout({
