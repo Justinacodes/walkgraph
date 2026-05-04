@@ -9,8 +9,8 @@
 
 | Gate | Status | Tasks | Rule |
 | --- | --- | --- | --- |
-| Gate 1: Design blueprints | pending | 02-06 | Documentation only; no product code changes. |
-| Gate 2: Owner approval | blocked | approval checkpoint | Build tasks remain blocked until the user approves the blueprints. |
+| Gate 1: Design blueprints | completed | 02-06 | Documentation only; no product code changes. |
+| Gate 2: Owner approval | pending | approval checkpoint | Build tasks remain blocked until the user approves the blueprints. |
 | Gate 3: Build sequence | blocked | 07-13 | Implement in dependency order and update feature docs while coding. |
 | Gate 4: Review and handoff | blocked | 14 | Verify FR coverage, demo data, QA, and handoff notes. |
 
@@ -22,7 +22,7 @@
 - Output: PRD, issues, coding guidelines, builder prompt, initial Takomi session
 
 ### Design
-- Status: pending
+- Status: completed
 - Tasks: 02, 03, 04, 05, 06
 - Required outputs:
   - `docs/features/00_Scope_Reconciliation.md`
@@ -41,16 +41,28 @@
 - Tasks: 14
 - Blocker: completion of tasks 07-13
 
+## Model Routing
+
+Provider: `oauth-router`.
+
+Detailed routing policy: `docs/Model_Routing_Strategy.md`.
+
+- `oauth-router/gpt-5.5`: senior brain for architecture, security, complex debugging, cross-file risk, final/deep review.
+- `oauth-router/gpt-5.4`: default workhorse for normal coding, planning, UI logic, implementation, debugging, and review.
+- `oauth-router/gpt-5.4-mini`: fast junior implementer for small, explicit, isolated edits only.
+
+Before sub-agent dispatch or model override, run and surface `pi --list-models`.
+
 ## Tasks
 
 | ID | Gate | Stage | Title | Status | Role | Workflow | Required Skills |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 01 | Genesis | genesis | Genesis foundation | completed | orchestrator | vibe-genesis | takomi |
-| 02 | Gate 1 | design | Scope reconciliation and MVP boundaries | pending | architect | vibe-design | takomi, avoid-feature-creep |
-| 03 | Gate 1 | design | Information architecture and screen map | pending | design | vibe-design | takomi, frontend-design |
-| 04 | Gate 1 | design | Data model and API contract audit | pending | architect | vibe-design | takomi, nextjs-standards |
-| 05 | Gate 1 | design | Routing and human-readable instruction design | pending | architect | vibe-design | takomi, nextjs-standards |
-| 06 | Gate 1 | design | Offline package and QR positioning design | pending | architect | vibe-design | takomi, nextjs-standards |
+| 02 | Gate 1 | design | Scope reconciliation and MVP boundaries | completed | architect | vibe-design | takomi, avoid-feature-creep |
+| 03 | Gate 1 | design | Information architecture and screen map | completed | design | vibe-design | takomi, frontend-design |
+| 04 | Gate 1 | design | Data model and API contract audit | completed | architect | vibe-design | takomi, nextjs-standards |
+| 05 | Gate 1 | design | Routing and human-readable instruction design | completed | architect | vibe-design | takomi, nextjs-standards |
+| 06 | Gate 1 | design | Offline package and QR positioning design | completed | architect | vibe-design | takomi, nextjs-standards |
 | 07 | Gate 3 | build | Foundation hardening and dependency/security cleanup | blocked | code | vibe-build | takomi, nextjs-standards |
 | 08 | Gate 3 | build | Auth, roles, organizations, and permissions | blocked | code | vibe-build | takomi, nextjs-standards |
 | 09 | Gate 3 | build | Building/floor/node/edge CRUD and graph editor | blocked | code | vibe-build | takomi, nextjs-standards, frontend-design |

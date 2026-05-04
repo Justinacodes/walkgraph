@@ -13,10 +13,19 @@ The orchestration has been revised into an approval-gated Takomi workflow.
 
 | Gate | Status | Notes |
 | --- | --- | --- |
-| Gate 1: Design blueprints | pending | Tasks 02-06 are ready for documentation-only execution. |
-| Gate 2: Owner approval | blocked | User must approve the five feature blueprints before build starts. |
+| Gate 1: Design blueprints | completed | Tasks 02-06 completed as documentation-only design work. |
+| Gate 2: Owner approval | pending | User must approve the five feature blueprints before build starts. |
 | Gate 3: Build sequence | blocked | Tasks 07-13 are intentionally blocked until Gate 2 approval. |
 | Gate 4: Review and handoff | blocked | Task 14 runs after build completion. |
+
+## Model Routing
+
+- Sub-agent provider: `oauth-router`.
+- Strategy doc: `docs/Model_Routing_Strategy.md`.
+- Senior brain: `oauth-router/gpt-5.5`.
+- Default workhorse: `oauth-router/gpt-5.4`.
+- Fast junior implementer: `oauth-router/gpt-5.4-mini` only for small, explicit, isolated work.
+- Preflight requirement: run and surface `pi --list-models` before any sub-agent dispatch or model override.
 
 ## Key Decisions
 
@@ -37,4 +46,4 @@ The orchestration has been revised into an approval-gated Takomi workflow.
 
 ## Next Action
 
-Execute tasks 02-06 using Takomi `vibe-design`. After those docs are complete, request owner approval before any build task begins.
+Review and approve the five Gate 1 blueprint docs. After owner approval, begin build task 07 with `oauth-router/gpt-5.4` unless security/risk requires escalation to `oauth-router/gpt-5.5`.
