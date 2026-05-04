@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WalkGraph Design Specification</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&family=Playfair+Display:ital,wght@1,900&display=swap" rel="stylesheet">
+    <style>
+        @theme {
+            --font-sans: "inter", sans-serif;
+            --font-mono: "JetBrains Mono", monospace;
+            --font-serif: "Playfair Display", serif;
+            --color-primary: #141414;
+            --color-accent: #3B82F6;
+        }
+        body { font-family: var(--font-sans); color: #141414; background: #F8FAFC; }
+        .serif { font-family: var(--font-serif); }
+        .mono { font-family: var(--font-mono); }
+    </style>
+</head>
+<body class="p-8 lg:p-20">
+    <div class="max-w-5xl mx-auto space-y-24">
+        <!-- Header -->
+        <header class="border-b-4 border-primary pb-8">
+            <h1 class="text-6xl font-black italic serif tracking-tight">WalkGraph <span class="text-2xl not-italic uppercase tracking-[0.3em] font-sans opacity-30 ml-4">Design Spec</span></h1>
+            <p class="text-lg mt-4 text-slate-500 max-w-2xl font-medium uppercase tracking-wider">A node-first indoor navigation system. Design Philosophy: Architectural, Precise, Human-centric.</p>
+        </header>
+
+        <!-- Colors -->
+        <section>
+            <h2 class="text-xs font-bold uppercase tracking-[0.4em] text-slate-400 mb-8">01. Color Palette</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="space-y-3">
+                    <div class="h-32 bg-[#141414] rounded-2xl shadow-xl shadow-black/10"></div>
+                    <div>
+                        <p class="font-bold">Ink Black</p>
+                        <p class="text-xs font-mono text-slate-400">#141414</p>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div class="h-32 bg-white border border-slate-200 rounded-2xl"></div>
+                    <div>
+                        <p class="font-bold">Paper White</p>
+                        <p class="text-xs font-mono text-slate-400">#FFFFFF</p>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div class="h-32 bg-slate-100 rounded-2xl"></div>
+                    <div>
+                        <p class="font-bold">Concrete</p>
+                        <p class="text-xs font-mono text-slate-400">#F1F5F9</p>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div class="h-32 bg-[#3B82F6] rounded-2xl shadow-xl shadow-blue-500/20"></div>
+                    <div>
+                        <p class="font-bold">Tech Blue</p>
+                        <p class="text-xs font-mono text-slate-400">#3B82F6</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Typography -->
+        <section>
+            <h2 class="text-xs font-bold uppercase tracking-[0.4em] text-slate-400 mb-8">02. Typography</h2>
+            <div class="space-y-12">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-end">
+                    <p class="text-8xl font-black serif italic tracking-tighter">Display</p>
+                    <p class="text-slate-500 leading-relaxed font-medium">Playfair Display Italic Black. Used exclusively for high-level branding and section headers to provide an "Editorial/Architectural" feel.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-end">
+                    <p class="text-6xl font-bold tracking-tight">Main Interface</p>
+                    <p class="text-slate-500 leading-relaxed">Inter. The workhorse. Bold for headings, medium for actions. Negative letter spacing (-0.02em) on headings for a tighter, premium feel.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-end">
+                    <p class="text-2xl font-mono">technical_data.01</p>
+                    <p class="text-slate-500 leading-relaxed font-mono text-sm uppercase">JetBrains Mono. Used for metadata, counters, timestamps, and status badges. Reinforces the "mapping" and "system" nature of the app.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Spacing & Radii -->
+        <section>
+            <h2 class="text-xs font-bold uppercase tracking-[0.4em] text-slate-400 mb-8">03. Spacing & Geometry</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12">
+                <div class="space-y-4">
+                    <div class="p-8 bg-white border border-slate-200 rounded-xl relative">
+                        <div class="absolute inset-0 border-4 border-dashed border-red-200 rounded-xl scale-95 pointer-events-none opacity-50"></div>
+                        <div class="h-12 w-full bg-slate-50 rounded-lg"></div>
+                    </div>
+                    <div>
+                        <p class="font-bold">Standard Padding (p-4 to p-6)</p>
+                        <p class="text-sm text-slate-500">Consistent internal padding for cards and sections. Use <code>p-4</code> for compact UI and <code>p-8</code> for layout density.</p>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="aspect-square bg-white border-2 border-primary rounded-3xl flex items-center justify-center">
+                        <div class="h-1/2 w-1/2 border-2 border-primary rounded-2xl"></div>
+                    </div>
+                    <div>
+                        <p class="font-bold">Soft Geometry (rounded-3xl)</p>
+                        <p class="text-sm text-slate-500">Main containers use <code>rounded-3xl</code> or <code>rounded-[2rem]</code> for a modern mobile feel. Inner components use <code>rounded-xl</code>.</p>
+                    </div>
+                </div>
+                <div class="space-y-4">
+                    <div class="p-8 bg-primary rounded-3xl shadow-2xl shadow-primary/20">
+                        <div class="h-4 w-3/4 bg-white/20 rounded"></div>
+                        <div class="h-4 w-1/2 bg-white/10 rounded mt-2"></div>
+                    </div>
+                    <div>
+                        <p class="font-bold">Technical Elevation</p>
+                        <p class="text-sm text-slate-500">Shadows should be large, blurred, and colored based on the surface. Avoid generic gray shadows. Use <code>shadow-primary/20</code>.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Components -->
+        <section>
+            <h2 class="text-xs font-bold uppercase tracking-[0.4em] text-slate-400 mb-8">04. Core Patterns</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Card -->
+                <div class="p-8 bg-white border border-slate-200 rounded-3xl shadow-sm hover:border-primary transition-all group">
+                    <div class="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center mb-6 group-hover:bg-primary transition-colors">
+                        <div class="h-2 w-2 bg-slate-300 group-hover:bg-white rounded-full"></div>
+                    </div>
+                    <h3 class="text-xl font-bold mb-2">Interactive Card</h3>
+                    <p class="text-slate-400 text-sm mb-6 uppercase font-mono tracking-wider">Type: Navigation_Point</p>
+                    <div class="h-1 bg-slate-50 rounded-full overflow-hidden">
+                        <div class="h-full bg-primary w-1/3"></div>
+                    </div>
+                </div>
+
+                <!-- Guidance -->
+                <div class="p-8 bg-primary text-white rounded-[2.5rem] relative overflow-hidden">
+                    <div class="relative z-10">
+                        <p class="text-[10px] font-bold uppercase tracking-[0.3em] opacity-40 mb-4">Route Step 01</p>
+                        <h3 class="text-2xl font-bold leading-tight">Turn left at the <br>BA Corridor</h3>
+                        <div class="mt-8 flex gap-2">
+                             <div class="h-1 w-8 bg-white rounded-full"></div>
+                             <div class="h-1 w-4 bg-white/20 rounded-full"></div>
+                             <div class="h-1 w-4 bg-white/20 rounded-full"></div>
+                        </div>
+                    </div>
+                    <div class="absolute -right-10 -bottom-10 h-40 w-40 bg-white/10 rounded-full blur-3xl"></div>
+                </div>
+            </div>
+        </section>
+
+        <footer class="pt-20 text-center opacity-20">
+            <p class="font-mono text-xs uppercase tracking-[1em]">WalkGraph Systems © 2026</p>
+        </footer>
+    </div>
+</body>
+</html>

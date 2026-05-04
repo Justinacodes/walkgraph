@@ -1,0 +1,47 @@
+import { NextResponse } from "next/server";
+import { db } from "@/lib/db";
+
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const q = searchParams.get("q")?.trim();
+  const buildingId = searchParams.get("buildingId");
+
+  if (!q || q.length < 1) return NextResponse.json({ nodes: [], buildings: [] });
+
+  const searchTerm = q.toLowerCase();
+
+  if (buildingId) {
+    const nodes = await db.node.findMany({
+      where: {
+        buildingId,
+        searchable: true,
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { description: { contains: q, mode: "insensitive" } },
+          { aliases: { hasSome: [q, searchTerm] } },
+          { tags: { hasSome: [q, searchTerm] } },
+        ],
+      },
+      include: { floor: { select: { name: true, levelNumber: true } } },
+      take: 20,
+    });
+    return NextResponse.json({ nodes, buildings: [] });
+  }
+
+  const buildings = await db.building.findMany({
+    where: {
+      status: "PUBLISHED",
+      visibility: "PUBLIC",
+      OR: [
+        { name: { contains: q, mode: "insensitive" } },
+        { description: { contains: q, mode: "insensitive" } },
+        { address: { contains: q, mode: "insensitive" } },
+        { category: { contains: q, mode: "insensitive" } },
+      ],
+    },
+    include: { organization: { select: { name: true } } },
+    take: 20,
+  });
+
+  return NextResponse.json({ nodes: [], buildings });
+}
