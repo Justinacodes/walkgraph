@@ -132,7 +132,7 @@ export function RouteTester({ buildingId, nodes }: { buildingId: string; nodes: 
               {/* Summary */}
               <div className="bg-[#141414] text-white rounded-3xl p-6">
                 <p className="font-mono text-xs uppercase tracking-widest opacity-40 mb-3">Route Found</p>
-                <div className="flex gap-6">
+                <div className="flex flex-wrap gap-6">
                   <div>
                     <div className="flex items-center gap-1.5 text-sm opacity-60 mb-1">
                       <Ruler className="w-3 h-3" /> Distance

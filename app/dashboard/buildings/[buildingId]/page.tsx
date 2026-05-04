@@ -26,13 +26,13 @@ export default async function BuildingDetailPage({ params }: { params: { buildin
 
   return (
     <div>
-      <div className="flex items-start justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">{building.name}</h1>
-          {building.address && <p className="text-slate-500 mt-1">{building.address}</p>}
-          {building.description && <p className="text-slate-600 mt-2 max-w-xl">{building.description}</p>}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-8">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold">{building.name}</h1>
+          {building.address && <p className="text-slate-500 mt-1 text-sm">{building.address}</p>}
+          {building.description && <p className="text-slate-600 mt-2 max-w-xl text-sm">{building.description}</p>}
         </div>
-        {isOwner && <PublishButton buildingId={building.id} status={building.status} />}
+        {isOwner && <div className="shrink-0"><PublishButton buildingId={building.id} status={building.status} /></div>}
       </div>
 
       {/* Stats */}

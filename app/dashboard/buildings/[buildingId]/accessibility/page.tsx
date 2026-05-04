@@ -86,20 +86,20 @@ export default async function AccessibilityAuditPage({ params }: { params: { bui
         <div className="bg-[#141414] text-white rounded-3xl p-6 md:col-span-1 flex flex-col justify-between">
           <p className="font-mono text-xs opacity-40 uppercase tracking-widest">Accessibility Score</p>
           <div>
-            <p className="text-6xl font-bold mt-4">{accessibilityScore}<span className="text-3xl opacity-40">%</span></p>
+            <p className="text-5xl sm:text-6xl font-bold mt-4">{accessibilityScore}<span className="text-2xl sm:text-3xl opacity-40">%</span></p>
             <p className="text-sm opacity-50 mt-2">of paths are wheelchair-accessible</p>
           </div>
         </div>
-        <div className="md:col-span-2 grid grid-cols-2 gap-4">
+        <div className="md:col-span-2 grid grid-cols-2 gap-3">
           {[
             { label: "Total paths", value: totalEdges, sub: "mapped connections" },
             { label: "Accessible", value: accessibleEdges, sub: "no stairs required" },
             { label: "Stairs only", value: stairsOnlyEdges, sub: "blocks wheelchair access" },
             { label: "Elevator links", value: elevatorCrossFloor, sub: "cross-floor accessible" },
           ].map(({ label, value, sub }) => (
-            <div key={label} className="bg-white rounded-2xl border border-slate-200 p-4">
+            <div key={label} className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-4">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{label}</p>
-              <p className="text-3xl font-bold text-[#141414]">{value}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-[#141414]">{value}</p>
               <p className="text-xs text-slate-400 mt-1">{sub}</p>
             </div>
           ))}

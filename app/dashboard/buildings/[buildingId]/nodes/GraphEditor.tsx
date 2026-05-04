@@ -347,7 +347,7 @@ export function GraphEditor({
   }
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-200px)]">
+    <div className="flex flex-col lg:flex-row gap-6 lg:h-[calc(100vh-200px)]">
       {/* Canvas */}
       <div className="flex-1 flex flex-col gap-3 min-w-0">
         {/* Toolbar */}
@@ -433,7 +433,7 @@ export function GraphEditor({
         )}
 
         {/* SVG Canvas */}
-        <div className="flex-1 bg-white rounded-3xl border border-slate-200 overflow-hidden relative">
+        <div className="h-[60vh] lg:flex-1 bg-white rounded-3xl border border-slate-200 overflow-hidden relative">
           {floors.length === 0 && (
             <div className="absolute inset-0 flex items-center justify-center text-slate-400 text-sm">
               Add floors first to start placing nodes
@@ -550,9 +550,9 @@ export function GraphEditor({
       </div>
 
       {/* Side panel */}
-      <div className="w-72 shrink-0">
+      <div className="w-full lg:w-72 lg:shrink-0">
         {selectedNode ? (
-          <div className="bg-white rounded-3xl border border-slate-200 p-5 h-full overflow-auto">
+          <div className="bg-white rounded-3xl border border-slate-200 p-5 lg:h-full overflow-auto">
             <div className="flex items-start justify-between mb-4">
               <h3 className="font-bold text-lg">{selectedNode.name}</h3>
               <button onClick={() => setSelectedNodeId(null)} className="p-1 rounded-lg hover:bg-slate-100">
@@ -618,7 +618,7 @@ export function GraphEditor({
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-3xl border border-slate-200 p-5 h-full">
+          <div className="bg-white rounded-3xl border border-slate-200 p-5">
             <p className="text-sm font-semibold text-slate-700 mb-2">Graph Summary</p>
             <div className="space-y-2 font-mono text-xs text-slate-500">
               <div className="flex justify-between"><span>Total nodes</span><span className="font-bold text-[#141414]">{nodes.length}</span></div>
