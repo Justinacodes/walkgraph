@@ -8,10 +8,11 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { PublishButton } from "./PublishButton";
 
-export default async function BuildingDetailPage({ params }: { params: { buildingId: string } }) {
+export default async function BuildingDetailPage({ params }: { params: Promise<{ buildingId: string }> }) {
+  const resolvedParams = await params;
   const session = await getServerSession(authOptions);
   const building = await db.building.findUnique({
-    where: { id: params.buildingId },
+    where: { id: resolvedParams.buildingId },
     include: {
       floors: { orderBy: { levelNumber: "asc" } },
       _count: { select: { nodes: true, edges: true, floors: true, qrCheckpoints: true } },
@@ -22,7 +23,7 @@ export default async function BuildingDetailPage({ params }: { params: { buildin
   if (!building) notFound();
 
   const isOwner = building.organization.ownerId === session?.user?.id;
-  const base = `/dashboard/buildings/${params.buildingId}`;
+  const base = `/dashboard/buildings/${resolvedParams.buildingId}`;
 
   return (
     <div>

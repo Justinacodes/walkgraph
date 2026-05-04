@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-export async function GET(_: Request, { params }: { params: { buildingId: string } }) {
+export async function GET(_: Request, context: { params: Promise<{ buildingId: string }> }) {
+  const params = await context.params;
   const building = await db.building.findUnique({
     where: { id: params.buildingId, status: "PUBLISHED" },
     include: {

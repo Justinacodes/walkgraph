@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { UpdateEdgeSchema } from "@/lib/validations/edge";
 
-export async function PATCH(req: Request, { params }: { params: { edgeId: string } }) {
+export async function PATCH(req: Request, context: { params: Promise<{ edgeId: string }> }) {
+  const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -16,7 +17,8 @@ export async function PATCH(req: Request, { params }: { params: { edgeId: string
   return NextResponse.json(updated);
 }
 
-export async function DELETE(_: Request, { params }: { params: { edgeId: string } }) {
+export async function DELETE(_: Request, context: { params: Promise<{ edgeId: string }> }) {
+  const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

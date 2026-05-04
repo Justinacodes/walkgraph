@@ -14,8 +14,8 @@ The orchestration has been revised into an approval-gated Takomi workflow.
 | Gate | Status | Notes |
 | --- | --- | --- |
 | Gate 1: Design blueprints | completed | Tasks 02-06 completed as documentation-only design work. |
-| Gate 2: Owner approval | pending | User must approve the five feature blueprints before build starts. |
-| Gate 3: Build sequence | blocked | Tasks 07-13 are intentionally blocked until Gate 2 approval. |
+| Gate 2: Owner approval | completed | Owner approved the five feature blueprints and authorized build to proceed. |
+| Gate 3: Build sequence | in-progress | Task 07 completed; task 08 is next. |
 | Gate 4: Review and handoff | blocked | Task 14 runs after build completion. |
 
 ## Model Routing
@@ -46,4 +46,4 @@ The orchestration has been revised into an approval-gated Takomi workflow.
 
 ## Next Action
 
-Review and approve the five Gate 1 blueprint docs. After owner approval, begin build task 07 with `oauth-router/gpt-5.4` unless security/risk requires escalation to `oauth-router/gpt-5.5`.
+Begin build task 08: Auth, roles, organizations, and team permissions. Use `oauth-router/gpt-5.5` for this security-sensitive work.

@@ -18,16 +18,17 @@ export default async function BuildingLayout({
   params,
 }: {
   children: React.ReactNode;
-  params: { buildingId: string };
+  params: Promise<{ buildingId: string }>;
 }) {
+  const resolvedParams = await params;
   const building = await db.building.findUnique({
-    where: { id: params.buildingId },
+    where: { id: resolvedParams.buildingId },
     include: { organization: { select: { id: true, name: true } } },
   });
 
   if (!building) notFound();
 
-  const base = `/dashboard/buildings/${params.buildingId}`;
+  const base = `/dashboard/buildings/${resolvedParams.buildingId}`;
 
   return (
     <div>

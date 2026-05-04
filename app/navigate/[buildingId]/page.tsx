@@ -9,11 +9,13 @@ export default async function NavigatePage({
   params,
   searchParams,
 }: {
-  params: { buildingId: string };
-  searchParams: { node?: string };
+  params: Promise<{ buildingId: string }>;
+  searchParams: Promise<{ node?: string }>;
 }) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
   const building = await db.building.findUnique({
-    where: { id: params.buildingId },
+    where: { id: resolvedParams.buildingId },
     include: {
       floors: { orderBy: { levelNumber: "asc" } },
       nodes: {
@@ -28,12 +30,12 @@ export default async function NavigatePage({
 
   // Resolve QR checkpoint code → node
   let currentNodeId: string | null = null;
-  if (searchParams.node) {
+  if (resolvedSearchParams.node) {
     const checkpoint = await db.qRCheckpoint.findUnique({
-      where: { code: searchParams.node },
+      where: { code: resolvedSearchParams.node },
       select: { nodeId: true, buildingId: true, active: true },
     });
-    if (checkpoint?.buildingId === params.buildingId && checkpoint.active) {
+    if (checkpoint?.buildingId === resolvedParams.buildingId && checkpoint.active) {
       currentNodeId = checkpoint.nodeId;
     }
   }
@@ -43,7 +45,7 @@ export default async function NavigatePage({
       {/* Header */}
       <div className="bg-[#141414] text-white px-5 py-5 safe-area-top">
         <Link
-          href={`/explore/${params.buildingId}`}
+          href={`/explore/${resolvedParams.buildingId}`}
           className="flex items-center gap-2 text-white/50 hover:text-white text-sm mb-4 transition-colors w-fit"
         >
           <ArrowLeft className="w-4 h-4" /> Back to building

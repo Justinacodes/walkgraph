@@ -8,7 +8,8 @@ async function getOrg(orgId: string, userId: string) {
   return db.organization.findFirst({ where: { id: orgId, ownerId: userId } });
 }
 
-export async function GET(_: Request, { params }: { params: { orgId: string } }) {
+export async function GET(_: Request, context: { params: Promise<{ orgId: string }> }) {
+  const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -25,7 +26,8 @@ export async function GET(_: Request, { params }: { params: { orgId: string } })
   return NextResponse.json(org);
 }
 
-export async function PATCH(req: Request, { params }: { params: { orgId: string } }) {
+export async function PATCH(req: Request, context: { params: Promise<{ orgId: string }> }) {
+  const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -40,7 +42,8 @@ export async function PATCH(req: Request, { params }: { params: { orgId: string 
   return NextResponse.json(updated);
 }
 
-export async function DELETE(_: Request, { params }: { params: { orgId: string } }) {
+export async function DELETE(_: Request, context: { params: Promise<{ orgId: string }> }) {
+  const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

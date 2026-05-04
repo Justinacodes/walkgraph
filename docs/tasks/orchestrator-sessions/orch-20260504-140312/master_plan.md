@@ -10,8 +10,8 @@
 | Gate | Status | Tasks | Rule |
 | --- | --- | --- | --- |
 | Gate 1: Design blueprints | completed | 02-06 | Documentation only; no product code changes. |
-| Gate 2: Owner approval | pending | approval checkpoint | Build tasks remain blocked until the user approves the blueprints. |
-| Gate 3: Build sequence | blocked | 07-13 | Implement in dependency order and update feature docs while coding. |
+| Gate 2: Owner approval | completed | approval checkpoint | Owner approved the blueprints and authorized build to proceed. |
+| Gate 3: Build sequence | in-progress | 07-13 | Implement in dependency order and update feature docs while coding. |
 | Gate 4: Review and handoff | blocked | 14 | Verify FR coverage, demo data, QA, and handoff notes. |
 
 ## Lifecycle
@@ -32,9 +32,9 @@
   - `docs/features/04_Offline_QR_Design.md`
 
 ### Build
-- Status: blocked
+- Status: in-progress
 - Tasks: 07, 08, 09, 10, 11, 12, 13
-- Blocker: Gate 2 owner approval of design blueprints
+- Gate 2 approval received; task 07 completed and task 08 is next.
 
 ### Review
 - Status: blocked
@@ -63,8 +63,8 @@ Before sub-agent dispatch or model override, run and surface `pi --list-models`.
 | 04 | Gate 1 | design | Data model and API contract audit | completed | architect | vibe-design | takomi, nextjs-standards |
 | 05 | Gate 1 | design | Routing and human-readable instruction design | completed | architect | vibe-design | takomi, nextjs-standards |
 | 06 | Gate 1 | design | Offline package and QR positioning design | completed | architect | vibe-design | takomi, nextjs-standards |
-| 07 | Gate 3 | build | Foundation hardening and dependency/security cleanup | blocked | code | vibe-build | takomi, nextjs-standards |
-| 08 | Gate 3 | build | Auth, roles, organizations, and permissions | blocked | code | vibe-build | takomi, nextjs-standards |
+| 07 | Gate 3 | build | Foundation hardening and dependency/security cleanup | completed | code | vibe-build | takomi, nextjs-standards |
+| 08 | Gate 3 | build | Auth, roles, organizations, and permissions | pending | code | vibe-build | takomi, nextjs-standards |
 | 09 | Gate 3 | build | Building/floor/node/edge CRUD and graph editor | blocked | code | vibe-build | takomi, nextjs-standards, frontend-design |
 | 10 | Gate 3 | build | Routing engine, route tester, and instructions | blocked | code | vibe-build | takomi, nextjs-standards |
 | 11 | Gate 3 | build | Public visitor PWA search and navigation | blocked | code | vibe-build | takomi, nextjs-standards, frontend-design |
@@ -105,5 +105,5 @@ flowchart TD
 
 - Human-readable task docs live in this session folder.
 - Machine state lives in `.pi/takomi/orchestrator/orch-20260504-140312.json`; task docs are the source of truth for this revised handoff.
-- Build tasks are intentionally marked blocked until the user approves the five feature blueprints.
+- Gate 2 owner approval was received; build is now in progress.
 - This project appears to use Prisma/Postgres, not Convex; do not run `pnpm convex deploy`.

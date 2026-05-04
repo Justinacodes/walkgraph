@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { UpdateFloorSchema } from "@/lib/validations/floor";
 
-export async function GET(_: Request, { params }: { params: { floorId: string } }) {
+export async function GET(_: Request, context: { params: Promise<{ floorId: string }> }) {
+  const params = await context.params;
   const floor = await db.floor.findUnique({
     where: { id: params.floorId },
     include: { nodes: { orderBy: { name: "asc" } }, _count: { select: { nodes: true } } },
@@ -13,7 +14,8 @@ export async function GET(_: Request, { params }: { params: { floorId: string } 
   return NextResponse.json(floor);
 }
 
-export async function PATCH(req: Request, { params }: { params: { floorId: string } }) {
+export async function PATCH(req: Request, context: { params: Promise<{ floorId: string }> }) {
+  const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -25,7 +27,8 @@ export async function PATCH(req: Request, { params }: { params: { floorId: strin
   return NextResponse.json(updated);
 }
 
-export async function DELETE(_: Request, { params }: { params: { floorId: string } }) {
+export async function DELETE(_: Request, context: { params: Promise<{ floorId: string }> }) {
+  const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

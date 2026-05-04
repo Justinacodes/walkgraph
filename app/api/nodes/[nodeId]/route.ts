@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { UpdateNodeSchema } from "@/lib/validations/node";
 
-export async function GET(_: Request, { params }: { params: { nodeId: string } }) {
+export async function GET(_: Request, context: { params: Promise<{ nodeId: string }> }) {
+  const params = await context.params;
   const node = await db.node.findUnique({
     where: { id: params.nodeId },
     include: {
@@ -18,7 +19,8 @@ export async function GET(_: Request, { params }: { params: { nodeId: string } }
   return NextResponse.json(node);
 }
 
-export async function PATCH(req: Request, { params }: { params: { nodeId: string } }) {
+export async function PATCH(req: Request, context: { params: Promise<{ nodeId: string }> }) {
+  const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -30,7 +32,8 @@ export async function PATCH(req: Request, { params }: { params: { nodeId: string
   return NextResponse.json(updated);
 }
 
-export async function DELETE(_: Request, { params }: { params: { nodeId: string } }) {
+export async function DELETE(_: Request, context: { params: Promise<{ nodeId: string }> }) {
+  const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

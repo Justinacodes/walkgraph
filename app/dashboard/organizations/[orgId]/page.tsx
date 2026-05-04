@@ -11,11 +11,12 @@ import { BuildingStatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { NewBuildingModal } from "./NewBuildingModal";
 
-export default async function OrgDetailPage({ params }: { params: { orgId: string } }) {
+export default async function OrgDetailPage({ params }: { params: Promise<{ orgId: string }> }) {
+  const resolvedParams = await params;
   const session = await getServerSession(authOptions);
 
   const org = await db.organization.findUnique({
-    where: { id: params.orgId },
+    where: { id: resolvedParams.orgId },
     include: {
       buildings: {
         include: { _count: { select: { nodes: true, floors: true } } },

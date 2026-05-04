@@ -5,9 +5,10 @@ import { Layers } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { NewFloorModal } from "./NewFloorModal";
 
-export default async function FloorsPage({ params }: { params: { buildingId: string } }) {
+export default async function FloorsPage({ params }: { params: Promise<{ buildingId: string }> }) {
+  const resolvedParams = await params;
   const floors = await db.floor.findMany({
-    where: { buildingId: params.buildingId },
+    where: { buildingId: resolvedParams.buildingId },
     include: { _count: { select: { nodes: true } } },
     orderBy: { levelNumber: "asc" },
   });
@@ -17,7 +18,7 @@ export default async function FloorsPage({ params }: { params: { buildingId: str
       <PageHeader
         title="Floors"
         subtitle="Define the floors in this building"
-        actions={<NewFloorModal buildingId={params.buildingId} />}
+        actions={<NewFloorModal buildingId={resolvedParams.buildingId} />}
       />
 
       {floors.length === 0 ? (

@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import QRCode from "qrcode";
 
-export async function GET(req: Request, { params }: { params: { nodeId: string } }) {
+export async function GET(req: Request, context: { params: Promise<{ nodeId: string }> }) {
+  const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

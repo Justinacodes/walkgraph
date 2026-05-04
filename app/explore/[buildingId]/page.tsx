@@ -6,9 +6,10 @@ import { MapPin, Layers, Navigation, ArrowLeft, QrCode, Download } from "lucide-
 import { BuildingStatusBadge } from "@/components/ui/Badge";
 import { IndoorNavigator } from "./IndoorNavigator";
 
-export default async function BuildingExplorePage({ params }: { params: { buildingId: string } }) {
+export default async function BuildingExplorePage({ params }: { params: Promise<{ buildingId: string }> }) {
+  const resolvedParams = await params;
   const building = await db.building.findUnique({
-    where: { id: params.buildingId },
+    where: { id: resolvedParams.buildingId },
     include: {
       floors: { orderBy: { levelNumber: "asc" } },
       organization: { select: { name: true } },
