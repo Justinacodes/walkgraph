@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canAccessBuilding, MAP_EDIT_ROLES } from "@/lib/permissions";
 import { CreateFloorSchema } from "@/lib/validations/floor";
 
 export async function GET(req: Request) {
@@ -26,10 +27,8 @@ export async function POST(req: Request) {
     const parsed = CreateFloorSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
 
-    const building = await db.building.findFirst({
-      where: { id: parsed.data.buildingId, organization: { ownerId: session.user.id } },
-    });
-    if (!building) return NextResponse.json({ error: "Building not found" }, { status: 404 });
+    const access = await canAccessBuilding(parsed.data.buildingId, session.user.id, MAP_EDIT_ROLES);
+    if (!access.exists || !access.allowed) return NextResponse.json({ error: "Building not found" }, { status: 404 });
 
     const floor = await db.floor.create({ data: parsed.data });
     return NextResponse.json(floor, { status: 201 });

@@ -61,7 +61,7 @@ Auth note: per task instruction, `oauth-router` is treated only as the provider/
 ### Must Change / Harden Before or During Build
 
 1. **Graph relationship integrity:** Prisma cannot currently enforce that `Node.floorId` belongs to the same `Building` as `Node.buildingId`, or that `Edge.fromNodeId` and `Edge.toNodeId` both belong to `Edge.buildingId`. Enforce in route/service transactions before create/update. Consider later composite constraints if schema complexity is acceptable.
-2. **Membership authorization:** Current model supports roles, but existing routes mostly check `organization.ownerId`. Build should introduce a shared authorization helper: `OWNER`/`ADMIN` can manage org/building/publish; `MAPPER` can manage floors/nodes/edges/QR; `VIEWER` read-only for protected admin contexts.
+2. **Membership authorization:** Implemented in task 08 via `lib/permissions.ts`. `OWNER`/`ADMIN` can manage org/building/publish; `MAPPER` can manage floor/node/edge graph edits; `VIEWER` remains read-only for protected admin contexts. Organization creation now creates an owner membership record.
 3. **Public-safe payloads:** Several read routes return full Prisma records by `buildingId` or ID. Build should define explicit DTO/select shapes for public responses to avoid leaking draft/private details, internal timestamps where unnecessary, and restricted nodes/edges beyond routing needs.
 4. **Published-only visitor graph access:** `search` with `buildingId`, `route`, and graph `GET` routes must first verify the building is published/public for unauthenticated visitors.
 5. **Publish validation:** Before setting `PUBLISHED`, require at least one floor, searchable destination nodes, connected graph edges, and no cross-building/cross-floor reference inconsistency.
@@ -74,8 +74,8 @@ Auth note: per task instruction, `oauth-router` is treated only as the provider/
 | Area / FR | Current Endpoint(s) | Baseline Status | Build Contract / Required Hardening |
 | --- | --- | --- | --- |
 | FR-001 Auth | `POST /api/auth/register`, NextAuth routes | Mostly aligned | Keep NextAuth/Auth.js. Validate inputs, hash passwords, never expose `passwordHash`, and keep `oauth-router` limited to agent/provider routing context only. |
-| FR-002 Organizations | `GET/POST /api/organizations`, `GET/PATCH/DELETE /api/organizations/:orgId` | Partial | Move from owner-only checks to membership/role checks. Return only orgs where user is owner/member. Slug uniqueness can stay. |
-| FR-002 Buildings | `GET/POST /api/buildings`, `GET/PATCH/DELETE /api/buildings/:buildingId` | Partial | Admin reads/mutations require authorized organization membership. Public building reads must use published/public filtering and safe selects. |
+| FR-002 Organizations | `GET/POST /api/organizations`, `GET/PATCH/DELETE /api/organizations/:orgId` | Implemented task 08 | Membership/role checks are active. User org lists include owned/member orgs. Org mutation is `OWNER`/`ADMIN`; delete is `OWNER`. Slug uniqueness remains enforced. |
+| FR-002 Buildings | `GET/POST /api/buildings`, `GET/PATCH/DELETE /api/buildings/:buildingId` | Implemented task 08 | Admin reads/mutations require authorized org membership. Public building reads are restricted to published/public unless the requester has org access. Building create/update/publish require `OWNER`/`ADMIN`; delete requires `OWNER`. |
 | FR-003 Floors | `GET/POST /api/floors`, `GET/PATCH/DELETE /api/floors/:floorId` | Partial | Protect draft/private reads. Mutations require `OWNER`/`ADMIN`/`MAPPER`. Validate floor belongs to authorized building. |
 | FR-003 Nodes | `GET/POST /api/nodes`, `GET/PATCH/DELETE /api/nodes/:nodeId` | Partial | Protect non-public reads. On create/update verify `floorId` belongs to `buildingId`. Use safe public DTOs for visitor payloads. |
 | FR-003 Edges | `GE

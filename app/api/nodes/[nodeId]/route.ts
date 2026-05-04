@@ -2,7 +2,15 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canAccessBuilding, MAP_EDIT_ROLES } from "@/lib/permissions";
 import { UpdateNodeSchema } from "@/lib/validations/node";
+
+async function getNodeAccess(nodeId: string, userId: string) {
+  const node = await db.node.findUnique({ where: { id: nodeId }, select: { buildingId: true } });
+  if (!node) return { exists: false, allowed: false };
+  const access = await canAccessBuilding(node.buildingId, userId, MAP_EDIT_ROLES);
+  return { exists: true, allowed: access.allowed, buildingId: node.buildingId };
+}
 
 export async function GET(_: Request, context: { params: Promise<{ nodeId: string }> }) {
   const params = await context.params;
@@ -24,9 +32,17 @@ export async function PATCH(req: Request, context: { params: Promise<{ nodeId: s
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  const access = await getNodeAccess(params.nodeId, session.user.id);
+  if (!access.exists || !access.allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   const body = await req.json();
   const parsed = UpdateNodeSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: parsed.error.errors[0].message }, { status: 400 });
+
+  if (parsed.data.floorId) {
+    const floor = await db.floor.findFirst({ where: { id: parsed.data.floorId, buildingId: access.buildingId } });
+    if (!floor) return NextResponse.json({ error: "Floor not found for building" }, { status: 400 });
+  }
 
   const updated = await db.node.update({ where: { id: params.nodeId }, data: parsed.data });
   return NextResponse.json(updated);
@@ -36,6 +52,9 @@ export async function DELETE(_: Request, context: { params: Promise<{ nodeId: st
   const params = await context.params;
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const access = await getNodeAccess(params.nodeId, session.user.id);
+  if (!access.exists || !access.allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await db.node.delete({ where: { id: params.nodeId } });
   return NextResponse.json({ ok: true });

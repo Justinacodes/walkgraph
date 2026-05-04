@@ -14,12 +14,12 @@ export default async function DashboardPage() {
 
   const [orgs, recentBuildings] = await Promise.all([
     db.organization.findMany({
-      where: { ownerId: userId },
+      where: { OR: [{ ownerId: userId }, { members: { some: { userId } } }] },
       include: { _count: { select: { buildings: true } } },
       take: 3,
     }),
     db.building.findMany({
-      where: { organization: { ownerId: userId } },
+      where: { organization: { OR: [{ ownerId: userId }, { members: { some: { userId } } }] } },
       include: { organization: { select: { name: true, id: true } }, _count: { select: { nodes: true, floors: true } } },
       orderBy: { updatedAt: "desc" },
       take: 6,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canAccessOrg, ORG_WRITE_ROLES } from "@/lib/permissions";
 import { CreateBuildingSchema } from "@/lib/validations/building";
 import { generateSlug } from "@/lib/utils/slug";
 
@@ -24,7 +25,9 @@ export async function GET(req: Request) {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const buildings = await db.building.findMany({
-    where: orgId ? { organizationId: orgId } : { organization: { ownerId: session.user.id } },
+    where: orgId
+      ? { organizationId: orgId, organization: { OR: [{ ownerId: session.user.id }, { members: { some: { userId: session.user.id } } }] } }
+      : { organization: { OR: [{ ownerId: session.user.id }, { members: { some: { userId: session.user.id } } }] } },
     include: { organization: { select: { name: true } }, _count: { select: { nodes: true, floors: true } } },
     orderBy: { updatedAt: "desc" },
   });
@@ -44,8 +47,8 @@ export async function POST(req: Request) {
     const { organizationId, name, description, address, latitude, longitude, category, imageUrl, visibility } = parsed.data;
     const slug = parsed.data.slug ?? generateSlug(name);
 
-    const org = await db.organization.findFirst({ where: { id: organizationId, ownerId: session.user.id } });
-    if (!org) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+    const allowed = await canAccessOrg(organizationId, session.user.id, ORG_WRITE_ROLES);
+    if (!allowed) return NextResponse.json({ error: "Organization not found" }, { status: 404 });
 
     const building = await db.building.create({
       data: { organizationId, name, slug, description, address, latitude, longitude, category, imageUrl: imageUrl || null, visibility },

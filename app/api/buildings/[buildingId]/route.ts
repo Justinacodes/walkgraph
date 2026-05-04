@@ -2,13 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canAccessBuilding, ORG_WRITE_ROLES } from "@/lib/permissions";
 import { UpdateBuildingSchema } from "@/lib/validations/building";
-
-async function getBuilding(buildingId: string, userId: string) {
-  return db.building.findFirst({
-    where: { id: buildingId, organization: { ownerId: userId } },
-  });
-}
 
 export async function GET(_: Request, context: { params: Promise<{ buildingId: string }> }) {
   const params = await context.params;
@@ -22,6 +17,15 @@ export async function GET(_: Request, context: { params: Promise<{ buildingId: s
   });
 
   if (!building) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (building.status !== "PUBLISHED" || building.visibility !== "PUBLIC") {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const access = await canAccessBuilding(params.buildingId, session.user.id);
+    if (!access.allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   return NextResponse.json(building);
 }
 
@@ -30,8 +34,8 @@ export async function PATCH(req: Request, context: { params: Promise<{ buildingI
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const building = await getBuilding(params.buildingId, session.user.id);
-  if (!building) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const access = await canAccessBuilding(params.buildingId, session.user.id, ORG_WRITE_ROLES);
+  if (!access.exists || !access.allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
   const parsed = UpdateBuildingSchema.safeParse(body);
@@ -46,8 +50,8 @@ export async function DELETE(_: Request, context: { params: Promise<{ buildingId
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const building = await getBuilding(params.buildingId, session.user.id);
-  if (!building) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const access = await canAccessBuilding(params.buildingId, session.user.id, ["OWNER"]);
+  if (!access.exists || !access.allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await db.building.delete({ where: { id: params.buildingId } });
   return NextResponse.json({ ok: true });
