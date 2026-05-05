@@ -60,7 +60,7 @@ Auth note: per task instruction, `oauth-router` is treated only as the provider/
 
 ### Must Change / Harden Before or During Build
 
-1. **Graph relationship integrity:** Prisma cannot currently enforce that `Node.floorId` belongs to the same `Building` as `Node.buildingId`, or that `Edge.fromNodeId` and `Edge.toNodeId` both belong to `Edge.buildingId`. Enforce in route/service transactions before create/update. Consider later composite constraints if schema complexity is acceptable.
+1. **Graph relationship integrity:** Implemented for node/edge writes in tasks 08-09. Node create/update validates that `floorId` belongs to the same `buildingId`; edge create/update validates both endpoint nodes belong to the edge building. Prisma still does not enforce this at the database constraint layer, so keep application guards in place and consider later composite constraints if schema complexity is acceptable.
 2. **Membership authorization:** Implemented in task 08 via `lib/permissions.ts`. `OWNER`/`ADMIN` can manage org/building/publish; `MAPPER` can manage floor/node/edge graph edits; `VIEWER` remains read-only for protected admin contexts. Organization creation now creates an owner membership record.
 3. **Public-safe payloads:** Several read routes return full Prisma records by `buildingId` or ID. Build should define explicit DTO/select shapes for public responses to avoid leaking draft/private details, internal timestamps where unnecessary, and restricted nodes/edges beyond routing needs.
 4. **Published-only visitor graph access:** `search` with `buildingId`, `route`, and graph `GET` routes must first verify the building is published/public for unauthenticated visitors.

@@ -1,5 +1,9 @@
 # Feature Blueprint: Information Architecture and Screen Map
 
+## Task 09 Build Update
+
+The mapper graph editor now supports manual floor-based node placement, drag-to-update coordinates, node metadata editing for type/searchability/restriction/aliases/tags, edge creation/deletion including cross-floor edges, floor plan backgrounds, and CSV node import. This satisfies the v1 screen requirement that a mapper can build a basic multi-floor school/campus graph from the dashboard.
+
 ## Goal
 
 Define the build-ready screen architecture for WalkGraph v1 as a **mobile-first Next.js PWA** that supports:
