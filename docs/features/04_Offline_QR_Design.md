@@ -294,6 +294,17 @@ Print guidance:
 - Unsupported schema blocks offline use and asks for re-download.
 - No test/copy implies Expo/native mobile, native SQLite, robust sync, or offline editing in v1.
 
+## Build Task 13 Implementation Notes
+
+Task 13 implements the v1 browser/PWA offline package path:
+
+- `GET /api/buildings/[buildingId]/download` now returns schemaVersion `1` packages only for `PUBLISHED` + `PUBLIC` buildings, using explicit client-safe selects for building metadata, floors, searchable unrestricted nodes, unrestricted edges, active QR checkpoints, and a generated search index.
+- Package version comes from the latest published `MapVersion` when present, with a generated `updatedAt` timestamp version fallback for published buildings without snapshots.
+- Browser storage uses IndexedDB database `walkgraph-offline-v1`, object store `buildingPackages`, and localStorage registry key `walkgraph.offline.registry.v1`.
+- Public building pages expose an account-free download/status/update/remove panel and detect stale local packages by comparing local and latest package versions.
+- Public navigation and QR navigation can load cached packages, search cached nodes, resolve cached active checkpoint codes, and route with the shared Dijkstra rules while offline.
+- Offline behavior remains read-only and browser-local; no native SQLite, robust sync, visitor accounts, or offline editing was added.
+
 ## Definition of Done for Build Tasks 12 and 13
 
 - QR generation, scan/start flow, printable output, and deactivation behavior follow this contract.

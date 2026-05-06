@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Search, Navigation, ArrowRight, Clock, Ruler,
   Accessibility, ChevronRight, MapPin, CheckCircle2, RotateCcw, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatWalkTime, formatDistance } from "@/lib/utils/format";
+import { loadOfflinePackage, routeOffline, searchOfflineNodes } from "@/lib/offline-browser";
+import type { OfflineBuildingPackage } from "@/lib/offline-package";
 
 interface Floor { id: string; name: string; levelNumber: number; }
 interface Node {
@@ -63,18 +65,36 @@ export function IndoorNavigator({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTarget, setSearchTarget] = useState<"from" | "to">("to");
   const [query, setQuery] = useState("");
+  const [offlinePackage, setOfflinePackage] = useState<OfflineBuildingPackage | null>(null);
+  const [offlineNotice, setOfflineNotice] = useState("");
 
-  const fromNode = nodes.find((n) => n.id === fromId);
-  const toNode = nodes.find((n) => n.id === toId);
-  const filtered = query
-    ? nodes.filter((n) => {
-        const haystack = [n.name, n.description, ...(n.aliases ?? []), ...(n.tags ?? []), n.floor?.name]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(query.toLowerCase());
+  useEffect(() => {
+    loadOfflinePackage(buildingId)
+      .then((pkg) => {
+        setOfflinePackage(pkg);
+        if (!navigator.onLine && pkg) setOfflineNotice("Offline mode: using the downloaded building package in this browser.");
       })
-    : nodes;
+      .catch(() => setOfflineNotice("Offline storage is unavailable in this browser session."));
+  }, [buildingId]);
+
+  const offlineNodes: Node[] = offlinePackage?.nodes.map((node) => ({
+    ...node,
+    floor: offlinePackage.floors.find((floor) => floor.id === node.floorId) ?? null,
+  })) ?? [];
+  const displayNodes = offlinePackage && !navigator.onLine ? offlineNodes : nodes;
+  const fromNode = displayNodes.find((n) => n.id === fromId);
+  const toNode = displayNodes.find((n) => n.id === toId);
+  const filtered = offlinePackage && !navigator.onLine
+    ? searchOfflineNodes(offlinePackage, query).map((node) => ({ ...node, floor: offlinePackage.floors.find((floor) => floor.id === node.floorId) ?? null }))
+    : query
+      ? displayNodes.filter((n) => {
+          const haystack = [n.name, n.description, ...(n.aliases ?? []), ...(n.tags ?? []), n.floor?.name]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(query.toLowerCase());
+        })
+      : displayNodes;
 
   async function navigate() {
     if (!fromId || !toId) return;
@@ -83,6 +103,16 @@ export function IndoorNavigator({
     setRoute(null);
     setActiveStep(0);
     try {
+      if (!navigator.onLine && offlinePackage) {
+        const offlineRoute = routeOffline(offlinePackage, fromId, toId, { accessibilityMode: accessible });
+        if (!offlineRoute) {
+          setError(accessible ? "No accessible offline route found in the downloaded package." : "No offline route found in the downloaded package.");
+          return;
+        }
+        setRoute(offlineRoute);
+        setOfflineNotice("Route calculated from the downloaded package. Offline data may be stale.");
+        return;
+      }
       const res = await fetch("/api/route", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -251,6 +281,7 @@ export function IndoorNavigator({
   // ── Planner view ─────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6">
+      {offlineNotice && <div className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm font-semibold text-blue-700">{offlineNotice}</div>}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 rounded-2xl px-5 py-4 text-sm flex items-center justify-between">
           {error}
@@ -314,7 +345,7 @@ export function IndoorNavigator({
       <div>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Quick access</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {nodes
+          {displayNodes
             .filter((n) => QUICK_TYPES.includes(n.type))
             .slice(0, 6)
             .map((n) => (
@@ -338,7 +369,7 @@ export function IndoorNavigator({
       <div>
         <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">All locations</p>
         <div className="space-y-1">
-          {nodes.slice(0, 12).map((n) => (
+          {displayNodes.slice(0, 12).map((n) => (
             <button
               key={n.id}
               onClick={() => setToId(n.id)}

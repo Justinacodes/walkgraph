@@ -5,6 +5,7 @@ import Link from "next/link";
 import { MapPin, ArrowLeft, ExternalLink } from "lucide-react";
 import { BuildingStatusBadge } from "@/components/ui/Badge";
 import { IndoorNavigator } from "./IndoorNavigator";
+import { OfflinePackagePanel } from "./OfflinePackagePanel";
 
 export default async function BuildingExplorePage({ params }: { params: Promise<{ buildingId: string }> }) {
   const resolvedParams = await params;
@@ -25,6 +26,12 @@ export default async function BuildingExplorePage({ params }: { params: Promise<
           floor: { select: { name: true, levelNumber: true } },
         },
         orderBy: { name: "asc" },
+      },
+      mapVersions: {
+        where: { status: "PUBLISHED" },
+        orderBy: [{ versionNumber: "desc" }, { createdAt: "desc" }],
+        take: 1,
+        select: { versionNumber: true },
       },
       _count: { select: { nodes: true, floors: true } },
     },
@@ -67,6 +74,7 @@ export default async function BuildingExplorePage({ params }: { params: Promise<
       </div>
 
       <div className="px-8 lg:px-20 py-10">
+        <OfflinePackagePanel buildingId={building.id} latestPackageVersion={building.mapVersions[0]?.versionNumber ?? Math.max(1, Math.floor(building.updatedAt.getTime() / 1000))} />
         <IndoorNavigator
           buildingId={building.id}
           nodes={building.nodes}

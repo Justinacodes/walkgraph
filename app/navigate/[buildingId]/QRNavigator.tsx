@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatDistance, formatWalkTime } from "@/lib/utils/format";
+import { loadOfflinePackage, resolveOfflineCheckpoint, routeOffline, searchOfflineNodes } from "@/lib/offline-browser";
+import type { OfflineBuildingPackage } from "@/lib/offline-package";
 
 interface Floor { id: string; name: string; levelNumber: number; }
 interface Node {
@@ -86,10 +88,21 @@ export function QRNavigator({
   const [error, setError] = useState("");
   const [activeStep, setActiveStep] = useState(0);
   const [manualCode, setManualCode] = useState(qrResolution.requestedCode ?? "");
+  const [offlinePackage, setOfflinePackage] = useState<OfflineBuildingPackage | null>(null);
+  const [offlineNotice, setOfflineNotice] = useState("");
 
   useEffect(() => {
     setFromId(currentNodeId ?? "");
   }, [currentNodeId]);
+
+  useEffect(() => {
+    loadOfflinePackage(buildingId)
+      .then((pkg) => {
+        setOfflinePackage(pkg);
+        if (!navigator.onLine && pkg) setOfflineNotice("Offline mode: using the downloaded building package in this browser.");
+      })
+      .catch(() => setOfflineNotice("Offline storage is unavailable in this browser session."));
+  }, [buildingId]);
 
   useEffect(() => {
     setManualCode(qrResolution.requestedCode ?? "");
@@ -100,16 +113,23 @@ export function QRNavigator({
     }
   }, [qrResolution]);
 
-  const fromNode = nodes.find((n) => n.id === fromId);
-  const toNode = nodes.find((n) => n.id === toId);
+  const offlineNodes: Node[] = offlinePackage?.nodes.map((node) => ({
+    ...node,
+    floor: offlinePackage.floors.find((floor) => floor.id === node.floorId) ?? null,
+  })) ?? [];
+  const displayNodes = offlinePackage && !navigator.onLine ? offlineNodes : nodes;
+  const fromNode = displayNodes.find((n) => n.id === fromId);
+  const toNode = displayNodes.find((n) => n.id === toId);
 
-  const filteredNodes = query
-    ? nodes.filter((n) => [n.name, n.description, ...(n.aliases ?? []), ...(n.tags ?? []), n.floor?.name]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(query.toLowerCase()))
-    : nodes;
+  const filteredNodes = offlinePackage && !navigator.onLine
+    ? searchOfflineNodes(offlinePackage, query).map((node) => ({ ...node, floor: offlinePackage.floors.find((floor) => floor.id === node.floorId) ?? null }))
+    : query
+      ? displayNodes.filter((n) => [n.name, n.description, ...(n.aliases ?? []), ...(n.tags ?? []), n.floor?.name]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(query.toLowerCase()))
+      : displayNodes;
 
   async function navigate() {
     if (!fromId || !toId) return;
@@ -118,6 +138,19 @@ export function QRNavigator({
     setRoute(null);
     setActiveStep(0);
     try {
+      if (!navigator.onLine && offlinePackage) {
+        const offlineRoute = routeOffline(offlinePackage, fromId, toId, { accessibilityMode: accessible });
+        if (!offlineRoute) {
+          setError(accessible ? "No accessible offline route found in the downloaded package." : "No offline route found in the downloaded package.");
+          setScreen("home");
+          return;
+        }
+        setRoute(offlineRoute);
+        setOfflineNotice("Route calculated from the downloaded package. Offline data may be stale.");
+        setScreen("route");
+        return;
+      }
+
       const res = await fetch("/api/route", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -145,6 +178,16 @@ export function QRNavigator({
 
   function applyManualCode() {
     const nextCode = manualCode.trim();
+    if (!navigator.onLine && offlinePackage && nextCode) {
+      const checkpointNode = resolveOfflineCheckpoint(offlinePackage, nextCode);
+      if (checkpointNode) {
+        setFromId(checkpointNode.id);
+        setOfflineNotice(`Offline checkpoint ready: ${checkpointNode.name}.`);
+        return;
+      }
+      setOfflineNotice("This checkpoint is not in the downloaded package. Choose your starting point manually.");
+      return;
+    }
     const params = new URLSearchParams(searchParams.toString());
     if (nextCode) params.set("node", nextCode);
     else params.delete("node");
@@ -200,6 +243,7 @@ export function QRNavigator({
 
   return (
     <div className="space-y-4 p-5">
+      {offlineNotice ? <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">{offlineNotice}</div> : null}
       {qrResolution.message ? <div className={cn("rounded-2xl border px-4 py-3 text-sm", qrResolution.status === "resolved" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : qrResolution.status === "inactive" ? "border-amber-200 bg-amber-50 text-amber-700" : "border-slate-200 bg-white text-slate-700")}><div className="flex items-start gap-3"><QrCode className="mt-0.5 h-4 w-4 shrink-0" /><div className="space-y-1"><p className="font-semibold">{qrResolution.message}</p>{qrResolution.requestedCode ? <p className="font-mono text-xs opacity-80">Checkpoint code: {qrResolution.requestedCode}</p> : null}</div></div></div> : null}
 
       <div className="rounded-3xl border border-slate-200 bg-white p-4">
@@ -220,7 +264,7 @@ export function QRNavigator({
 
       <button onClick={navigate} disabled={!fromId || !toId || loading} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#141414] py-5 text-base font-bold text-white disabled:opacity-40">{loading ? <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg> : <Navigation className="h-5 w-5" />}Get Directions</button>
 
-      {!toId ? <div><p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Popular destinations</p><div className="grid grid-cols-2 gap-2">{nodes.filter((n) => ["ENTRANCE", "EXIT", "RESTROOM", "ELEVATOR", "RECEPTION"].includes(n.type)).slice(0, 6).map((n) => <button key={n.id} onClick={() => setToId(n.id)} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-all hover:border-[#141414]"><span className="mb-1 block text-lg">{NODE_TYPE_ICONS[n.type]}</span><p className="truncate text-sm font-semibold text-[#141414]">{n.name}</p>{n.floor ? <p className="text-xs text-slate-400">{n.floor.name}</p> : null}</button>)}</div></div> : null}
+      {!toId ? <div><p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Popular destinations</p><div className="grid grid-cols-2 gap-2">{displayNodes.filter((n) => ["ENTRANCE", "EXIT", "RESTROOM", "ELEVATOR", "RECEPTION"].includes(n.type)).slice(0, 6).map((n) => <button key={n.id} onClick={() => setToId(n.id)} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left transition-all hover:border-[#141414]"><span className="mb-1 block text-lg">{NODE_TYPE_ICONS[n.type]}</span><p className="truncate text-sm font-semibold text-[#141414]">{n.name}</p>{n.floor ? <p className="text-xs text-slate-400">{n.floor.name}</p> : null}</button>)}</div></div> : null}
     </div>
   );
 }
