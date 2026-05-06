@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { canAccessBuilding, MAP_EDIT_ROLES } from "@/lib/permissions";
 import { buildCheckpointUrl, getShortCheckpointCode } from "@/lib/qr";
 
-export async function GET(_: Request, context: { params: Promise<{ nodeId: string }> }) {
+export async function POST(_: Request, context: { params: Promise<{ nodeId: string }> }) {
   const params = await context.params;
   const session = await getServerSession(authOptions);
 

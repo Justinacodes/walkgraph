@@ -56,12 +56,12 @@ export default async function NavigatePage({
 
   if (resolvedSearchParams.node) {
     const requestedCode = resolvedSearchParams.node.trim();
-    const checkpoint = await db.qRCheckpoint.findFirst({
+    const checkpointMatches = await db.qRCheckpoint.findMany({
       where: {
         buildingId: resolvedParams.buildingId,
         ...(requestedCode.length <= 8
           ? { code: { endsWith: requestedCode, mode: "insensitive" } }
-          : { code: requestedCode }),
+          : { code: { equals: requestedCode, mode: "insensitive" } }),
       },
       select: {
         code: true,
@@ -76,9 +76,17 @@ export default async function NavigatePage({
           },
         },
       },
+      take: 2,
     });
+    const checkpoint = checkpointMatches.length === 1 ? checkpointMatches[0] : null;
 
-    if (!checkpoint || checkpoint.buildingId !== resolvedParams.buildingId) {
+    if (checkpointMatches.length > 1) {
+      qrResolution = {
+        status: "invalid",
+        requestedCode,
+        message: "Checkpoint code is ambiguous. Enter the full QR code or scan the checkpoint again.",
+      };
+    } else if (!checkpoint || checkpoint.buildingId !== resolvedParams.buildingId) {
       qrResolution = {
         status: "invalid",
         requestedCode,

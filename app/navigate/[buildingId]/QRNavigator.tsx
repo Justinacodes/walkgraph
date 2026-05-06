@@ -78,6 +78,7 @@ export function QRNavigator({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [activeNodeId, setActiveNodeId] = useState(currentNodeId ?? "");
   const [fromId, setFromId] = useState(currentNodeId ?? "");
   const [toId, setToId] = useState("");
   const [screen, setScreen] = useState<Screen>("home");
@@ -94,7 +95,9 @@ export function QRNavigator({
   const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
-    setFromId(currentNodeId ?? "");
+    const nextCurrentNodeId = currentNodeId ?? "";
+    setActiveNodeId(nextCurrentNodeId);
+    setFromId(nextCurrentNodeId);
   }, [currentNodeId]);
 
   useEffect(() => {
@@ -120,6 +123,7 @@ export function QRNavigator({
   useEffect(() => {
     setManualCode(qrResolution.requestedCode ?? "");
     if (qrResolution.status === "inactive" || qrResolution.status === "invalid") {
+      setActiveNodeId("");
       setFromId("");
       setRoute(null);
       setScreen("home");
@@ -195,6 +199,7 @@ export function QRNavigator({
     if (!isOnline && offlinePackage && nextCode) {
       const checkpointNode = resolveOfflineCheckpoint(offlinePackage, nextCode);
       if (checkpointNode) {
+        setActiveNodeId(checkpointNode.id);
         setFromId(checkpointNode.id);
         setOfflineNotice(`Offline checkpoint ready: ${checkpointNode.name}.`);
         return;
@@ -213,6 +218,7 @@ export function QRNavigator({
     params.delete("node");
     router.replace(params.size ? `/navigate/${buildingId}?${params.toString()}` : `/navigate/${buildingId}`);
     setManualCode("");
+    setActiveNodeId("");
   }
 
   function reset() {
@@ -266,7 +272,7 @@ export function QRNavigator({
         {searchParams.get("node") ? <button onClick={clearQrCode} className="mt-3 text-sm text-slate-500 underline underline-offset-2">Clear checkpoint and choose manually</button> : null}
       </div>
 
-      {currentNodeId && fromNode ? <div className="flex items-center gap-3 rounded-2xl bg-[#3B82F6] px-4 py-3 text-white"><MapPin className="h-5 w-5 shrink-0" /><div><p className="text-xs font-mono opacity-70">You are here</p><p className="font-bold">{fromNode.name}</p></div></div> : null}
+      {activeNodeId && fromNode ? <div className="flex items-center gap-3 rounded-2xl bg-[#3B82F6] px-4 py-3 text-white"><MapPin className="h-5 w-5 shrink-0" /><div><p className="text-xs font-mono opacity-70">You are here</p><p className="font-bold">{fromNode.name}</p></div></div> : null}
       {error ? <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div> : null}
 
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white">

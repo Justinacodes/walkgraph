@@ -127,12 +127,13 @@ export function searchOfflineNodes(pkg: OfflineBuildingPackage, query: string) {
 
 export function resolveOfflineCheckpoint(pkg: OfflineBuildingPackage, code: string) {
   const normalizedCode = code.trim().toLowerCase();
-  const checkpoint = pkg.qrCheckpoints.find((item) => {
+  const checkpointMatches = pkg.qrCheckpoints.filter((item) => {
     if (!item.active) return false;
     const fullCode = item.code.toLowerCase();
     return fullCode === normalizedCode || (normalizedCode.length <= 8 && fullCode.endsWith(normalizedCode));
   });
-  if (!checkpoint) return null;
+  if (checkpointMatches.length !== 1) return null;
+  const checkpoint = checkpointMatches[0];
   return pkg.nodes.find((node) => node.id === checkpoint.nodeId && node.searchable && !node.restricted) ?? null;
 }
 

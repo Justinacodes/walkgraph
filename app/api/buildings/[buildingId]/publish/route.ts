@@ -28,33 +28,37 @@ export async function POST(_: Request, context: { params: Promise<{ buildingId: 
     }
   }
 
-  const updated = await db.building.update({
-    where: { id: params.buildingId },
-    data: { status: newStatus },
-  });
-
-  if (newStatus === "PUBLISHED") {
-    const lastVersion = await db.mapVersion.findFirst({
-      where: { buildingId: params.buildingId },
-      orderBy: { versionNumber: "desc" },
+  const updated = await db.$transaction(async (tx) => {
+    const nextBuilding = await tx.building.update({
+      where: { id: params.buildingId },
+      data: { status: newStatus },
     });
 
-    await db.mapVersion.create({
-      data: {
-        buildingId: params.buildingId,
-        versionNumber: (lastVersion?.versionNumber ?? 0) + 1,
-        status: "PUBLISHED",
-        createdBy: session.user.id,
-        publishedAt: new Date(),
-        snapshotJson: {
-          building: { id: building.id, name: building.name },
-          floors: building.floors,
-          nodes: building.nodes,
-          edges: building.edges,
+    if (newStatus === "PUBLISHED") {
+      const lastVersion = await tx.mapVersion.findFirst({
+        where: { buildingId: params.buildingId },
+        orderBy: { versionNumber: "desc" },
+      });
+
+      await tx.mapVersion.create({
+        data: {
+          buildingId: params.buildingId,
+          versionNumber: (lastVersion?.versionNumber ?? 0) + 1,
+          status: "PUBLISHED",
+          createdBy: session.user.id,
+          publishedAt: new Date(),
+          snapshotJson: {
+            building: { id: building.id, name: building.name },
+            floors: building.floors,
+            nodes: building.nodes,
+            edges: building.edges,
+          },
         },
-      },
-    });
-  }
+      });
+    }
+
+    return nextBuilding;
+  });
 
   return NextResponse.json(updated);
 }

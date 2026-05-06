@@ -43,7 +43,7 @@ export function QRManager({
     setError("");
 
     try {
-      const res = await fetch(`/api/qr/${nodeId}`);
+      const res = await fetch(`/api/qr/${nodeId}`, { method: "POST" });
       const data = await res.json();
 
       if (!res.ok) {
