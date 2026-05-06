@@ -13,8 +13,11 @@ export const metadata = { title: "Organizations" };
 export default async function OrganizationsPage() {
   const session = await getServerSession(authOptions);
   const orgs = await db.organization.findMany({
-    where: { ownerId: session!.user.id },
-    include: { _count: { select: { buildings: true, members: true } } },
+    where: { OR: [{ ownerId: session!.user.id }, { members: { some: { userId: session!.user.id } } }] },
+    include: {
+      members: { where: { userId: session!.user.id }, select: { role: true }, take: 1 },
+      _count: { select: { buildings: true, members: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -53,6 +56,9 @@ export default async function OrganizationsPage() {
                 </div>
                 <h3 className="text-xl font-bold">{org.name}</h3>
                 <p className="font-mono text-xs text-slate-400 mt-1">/{org.slug}</p>
+                <p className="mt-2 inline-flex rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                  {org.members[0]?.role ?? "OWNER"}
+                </p>
                 <div className="flex gap-4 mt-4 font-mono text-xs text-slate-400">
                   <span>{org._count.buildings} buildings</span>
                   <span>{org._count.members} members</span>

@@ -3,6 +3,7 @@
 ## 1. Prerequisites
 
 - Node.js 18+
+- pnpm 10+
 - PostgreSQL (local or managed: Neon, Supabase, Railway)
 
 ## 2. Environment Variables
@@ -26,16 +27,16 @@ NEXT_PUBLIC_APP_URL="http://localhost:3000"
 
 ```bash
 # Push schema to database (creates all tables)
-npm run db:push
+pnpm db:push
 
 # Or run migrations
-npx prisma migrate dev --name init
+pnpm exec prisma migrate dev --name init
 ```
 
 ## 4. Start Development
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Open http://localhost:3000

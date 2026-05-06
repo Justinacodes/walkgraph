@@ -2,9 +2,10 @@ import { db } from "@/lib/db";
 import { notFound } from "next/navigation";
 import { CheckCircle2, XCircle, AlertTriangle, Accessibility, ArrowRight } from "lucide-react";
 
-export default async function AccessibilityAuditPage({ params }: { params: { buildingId: string } }) {
+export default async function AccessibilityAuditPage({ params }: { params: Promise<{ buildingId: string }> }) {
+  const resolvedParams = await params;
   const building = await db.building.findUnique({
-    where: { id: params.buildingId },
+    where: { id: resolvedParams.buildingId },
     include: {
       floors: { orderBy: { levelNumber: "asc" } },
       nodes: { include: { floor: { select: { name: true, levelNumber: true } } } },

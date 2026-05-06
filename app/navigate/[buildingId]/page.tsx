@@ -1,55 +1,133 @@
 export const dynamic = "force-dynamic";
+
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { QRNavigator } from "./QRNavigator";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+
+interface QRResolution {
+  status: "idle" | "resolved" | "inactive" | "invalid";
+  requestedCode: string | null;
+  message: string | null;
+  checkpointLabel?: string | null;
+}
 
 export default async function NavigatePage({
   params,
   searchParams,
 }: {
-  params: { buildingId: string };
-  searchParams: { node?: string };
+  params: Promise<{ buildingId: string }>;
+  searchParams: Promise<{ node?: string }>;
 }) {
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+
   const building = await db.building.findUnique({
-    where: { id: params.buildingId },
+    where: { id: resolvedParams.buildingId },
     include: {
       floors: { orderBy: { levelNumber: "asc" } },
       nodes: {
-        where: { searchable: true },
-        include: { floor: { select: { name: true, levelNumber: true } } },
+        where: { searchable: true, restricted: false },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          description: true,
+          aliases: true,
+          tags: true,
+          floor: { select: { name: true, levelNumber: true } },
+        },
         orderBy: { name: "asc" },
       },
     },
   });
 
-  if (!building || building.status !== "PUBLISHED") notFound();
+  if (!building || building.status !== "PUBLISHED" || building.visibility !== "PUBLIC") {
+    notFound();
+  }
 
-  // Resolve QR checkpoint code → node
   let currentNodeId: string | null = null;
-  if (searchParams.node) {
-    const checkpoint = await db.qRCheckpoint.findUnique({
-      where: { code: searchParams.node },
-      select: { nodeId: true, buildingId: true, active: true },
+  let qrResolution: QRResolution = {
+    status: "idle",
+    requestedCode: resolvedSearchParams.node ?? null,
+    message: null,
+  };
+
+  if (resolvedSearchParams.node) {
+    const requestedCode = resolvedSearchParams.node.trim();
+    const checkpointMatches = await db.qRCheckpoint.findMany({
+      where: {
+        buildingId: resolvedParams.buildingId,
+        ...(requestedCode.length <= 8
+          ? { code: { endsWith: requestedCode, mode: "insensitive" } }
+          : { code: { equals: requestedCode, mode: "insensitive" } }),
+      },
+      select: {
+        code: true,
+        label: true,
+        active: true,
+        buildingId: true,
+        node: {
+          select: {
+            id: true,
+            searchable: true,
+            restricted: true,
+          },
+        },
+      },
+      take: 2,
     });
-    if (checkpoint?.buildingId === params.buildingId && checkpoint.active) {
-      currentNodeId = checkpoint.nodeId;
+    const checkpoint = checkpointMatches.length === 1 ? checkpointMatches[0] : null;
+
+    if (checkpointMatches.length > 1) {
+      qrResolution = {
+        status: "invalid",
+        requestedCode,
+        message: "Checkpoint code is ambiguous. Enter the full QR code or scan the checkpoint again.",
+      };
+    } else if (!checkpoint || checkpoint.buildingId !== resolvedParams.buildingId) {
+      qrResolution = {
+        status: "invalid",
+        requestedCode,
+        message: "This checkpoint is invalid for this building. Choose your starting point manually.",
+      };
+    } else if (!checkpoint.active) {
+      qrResolution = {
+        status: "inactive",
+        requestedCode,
+        checkpointLabel: checkpoint.label,
+        message: "This checkpoint is no longer active. Choose your starting point manually.",
+      };
+    } else if (!checkpoint.node || !checkpoint.node.searchable || checkpoint.node.restricted) {
+      qrResolution = {
+        status: "invalid",
+        requestedCode,
+        checkpointLabel: checkpoint.label,
+        message: "This checkpoint is unavailable right now. Choose your starting point manually.",
+      };
+    } else {
+      currentNodeId = checkpoint.node.id;
+      qrResolution = {
+        status: "resolved",
+        requestedCode,
+        checkpointLabel: checkpoint.label,
+        message: checkpoint.label ? `Checkpoint ready: ${checkpoint.label}.` : "Checkpoint ready.",
+      };
     }
   }
 
   return (
     <div className="min-h-screen bg-[#F1F5F9]">
-      {/* Header */}
-      <div className="bg-[#141414] text-white px-5 py-5 safe-area-top">
+      <div className="bg-[#141414] px-5 py-5 text-white safe-area-top">
         <Link
-          href={`/explore/${params.buildingId}`}
-          className="flex items-center gap-2 text-white/50 hover:text-white text-sm mb-4 transition-colors w-fit"
+          href={`/explore/${resolvedParams.buildingId}`}
+          className="mb-4 flex w-fit items-center gap-2 text-sm text-white/50 transition-colors hover:text-white"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to building
+          <ArrowLeft className="h-4 w-4" /> Back to building
         </Link>
         <h1 className="text-2xl font-bold">{building.name}</h1>
-        <p className="text-white/50 text-sm mt-1">Indoor Navigation</p>
+        <p className="mt-1 text-sm text-white/50">Indoor Navigation</p>
       </div>
 
       <QRNavigator
@@ -57,6 +135,7 @@ export default async function NavigatePage({
         nodes={building.nodes}
         floors={building.floors}
         currentNodeId={currentNodeId}
+        qrResolution={qrResolution}
       />
     </div>
   );

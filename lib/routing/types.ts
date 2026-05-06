@@ -1,3 +1,9 @@
+export interface GraphFloor {
+  id: string;
+  name: string;
+  levelNumber: number;
+}
+
 export interface GraphNode {
   id: string;
   name: string;
@@ -5,6 +11,8 @@ export interface GraphNode {
   floorId: string;
   x: number;
   y: number;
+  searchable: boolean;
+  restricted: boolean;
 }
 
 export interface GraphEdge {
@@ -26,11 +34,18 @@ export interface RouteOptions {
   accessibilityMode?: boolean;
 }
 
+export interface RouteWarning {
+  code: string;
+  message: string;
+}
+
 export interface RouteStep {
   fromNode: GraphNode;
   toNode: GraphNode;
   edge: GraphEdge;
   instruction: string;
+  floorChange: boolean;
+  targetFloorName: string | null;
 }
 
 export interface RouteResult {
@@ -38,4 +53,6 @@ export interface RouteResult {
   steps: RouteStep[];
   totalDistanceEstimate: number;
   totalWalkTimeEstimate: number;
+  floorChanges: number;
+  warnings: RouteWarning[];
 }

@@ -10,8 +10,13 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const orgs = await db.organization.findMany({
-    where: { ownerId: session.user.id },
-    include: { _count: { select: { buildings: true, members: true } } },
+    where: {
+      OR: [{ ownerId: session.user.id }, { members: { some: { userId: session.user.id } } }],
+    },
+    include: {
+      members: { where: { userId: session.user.id }, select: { role: true }, take: 1 },
+      _count: { select: { buildings: true, members: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -34,7 +39,15 @@ export async function POST(req: Request) {
     if (existing) return NextResponse.json({ error: "Slug already taken" }, { status: 400 });
 
     const org = await db.organization.create({
-      data: { name, slug, logoUrl: logoUrl || null, ownerId: session.user.id, visibility },
+      data: {
+        name,
+        slug,
+        logoUrl: logoUrl || null,
+        ownerId: session.user.id,
+        visibility,
+        members: { create: { userId: session.user.id, role: "OWNER" } },
+      },
+      include: { members: true },
     });
 
     return NextResponse.json(org, { status: 201 });

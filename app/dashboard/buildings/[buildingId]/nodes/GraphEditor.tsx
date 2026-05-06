@@ -19,6 +19,7 @@ interface Floor { id: string; name: string; levelNumber: number; floorPlanImageU
 interface Node {
   id: string; name: string; type: string; x: number; y: number; floorId: string;
   description?: string | null; restricted: boolean; searchable: boolean;
+  aliases?: string[]; tags?: string[]; accessibilityFlags?: string[];
   floor?: { name: string; levelNumber: number };
 }
 interface Edge {
@@ -67,7 +68,8 @@ export function GraphEditor({
   const [showFloorPlan, setShowFloorPlan] = useState(false);
   const [showCsvImport, setShowCsvImport] = useState(false);
   const [pendingXY, setPendingXY] = useState({ x: 400, y: 300 });
-  const [addNodeForm, setAddNodeForm] = useState({ name: "", type: "ROOM" as string });
+  const [addNodeForm, setAddNodeForm] = useState({ name: "", type: "ROOM" as string, aliases: "", tags: "", searchable: true, restricted: false });
+  const [selectedNodeForm, setSelectedNodeForm] = useState({ name: "", type: "ROOM" as string, aliases: "", tags: "", searchable: true, restricted: false });
   const [addEdgeForm, setAddEdgeForm] = useState({
     fromNodeId: "", toNodeId: "", directionHint: "", accessible: true,
     requiresStairs: false, requiresElevator: false, oneWay: false,
@@ -98,6 +100,22 @@ export function GraphEditor({
     return from?.floorId === selectedFloorId || to?.floorId === selectedFloorId;
   });
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) ?? null;
+
+  useEffect(() => {
+    if (!selectedNode) return;
+    setSelectedNodeForm({
+      name: selectedNode.name,
+      type: selectedNode.type,
+      aliases: "aliases" in selectedNode && Array.isArray(selectedNode.aliases) ? selectedNode.aliases.join(", ") : "",
+      tags: "tags" in selectedNode && Array.isArray(selectedNode.tags) ? selectedNode.tags.join(", ") : "",
+      searchable: selectedNode.searchable,
+      restricted: selectedNode.restricted,
+    });
+  }, [selectedNode]);
+
+  function splitCsv(value: string) {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
 
   function toSVGCoords(clientX: number, clientY: number) {
     const rect = svgRef.current!.getBoundingClientRect();
@@ -143,7 +161,7 @@ export function GraphEditor({
     if (mode === "addNode") {
       const coords = toSVGCoords(e.clientX, e.clientY);
       setPendingXY(coords);
-      setAddNodeForm({ name: "", type: "ROOM" });
+      setAddNodeForm({ name: "", type: "ROOM", aliases: "", tags: "", searchable: true, restricted: false });
       setShowAddNode(true);
     } else {
       setSelectedNodeId(null);
@@ -198,20 +216,22 @@ export function GraphEditor({
     isPanning.current = false;
   }
 
-  async function saveFloorPlan() {
+  async function saveFloorPlan(nextUrl = floorPlanUrl) {
     setSaving(true);
+    const normalizedUrl = nextUrl.trim();
     const res = await fetch(`/api/floors/${selectedFloorId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ floorPlanImageUrl: floorPlanUrl || null }),
+      body: JSON.stringify({ floorPlanImageUrl: normalizedUrl || null }),
     });
     if (res.ok) {
       setFloorPlanImages((prev) => {
         const next = { ...prev };
-        if (floorPlanUrl) next[selectedFloorId] = floorPlanUrl;
+        if (normalizedUrl) next[selectedFloorId] = normalizedUrl;
         else delete next[selectedFloorId];
         return next;
       });
+      setFloorPlanUrl(normalizedUrl);
       setShowFloorPlan(false);
     }
     setSaving(false);
@@ -225,8 +245,14 @@ export function GraphEditor({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         buildingId, floorId: selectedFloorId,
-        name: addNodeForm.name, type: addNodeForm.type,
-        x: pendingXY.x, y: pendingXY.y,
+        name: addNodeForm.name,
+        type: addNodeForm.type,
+        x: pendingXY.x,
+        y: pendingXY.y,
+        aliases: splitCsv(addNodeForm.aliases),
+        tags: splitCsv(addNodeForm.tags),
+        searchable: addNodeForm.searchable,
+        restricted: addNodeForm.restricted,
       }),
     });
     if (res.ok) {
@@ -295,6 +321,28 @@ export function GraphEditor({
       }]);
       setShowCrossFloorEdge(false);
       setCrossFloorForm({ fromNodeId: "", toNodeId: "", requiresStairs: false, requiresElevator: false, directionHint: "", distanceEstimate: "", walkTimeEstimate: "" });
+    }
+    setSaving(false);
+  }
+
+  async function saveSelectedNode() {
+    if (!selectedNode) return;
+    setSaving(true);
+    const res = await fetch(`/api/nodes/${selectedNode.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: selectedNodeForm.name,
+        type: selectedNodeForm.type,
+        aliases: splitCsv(selectedNodeForm.aliases),
+        tags: splitCsv(selectedNodeForm.tags),
+        searchable: selectedNodeForm.searchable,
+        restricted: selectedNodeForm.restricted,
+      }),
+    });
+    if (res.ok) {
+      const updated = await res.json();
+      setNodes((prev) => prev.map((node) => (node.id === updated.id ? { ...node, ...updated, floor: node.floor } : node)));
     }
     setSaving(false);
   }
@@ -469,7 +517,7 @@ export function GraphEditor({
                 href={floorPlanImages[selectedFloorId]}
                 x={0} y={0} width={CANVAS_W} height={CANVAS_H}
                 preserveAspectRatio="xMidYMid meet"
-                style={{ opacity: 0.35 }}
+                style={{ opacity: 0.35, pointerEvents: "none" }}
               />
             )}
 
@@ -559,7 +607,24 @@ export function GraphEditor({
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <NodeTypeBadge type={selectedNode.type} />
+            <div className="space-y-3">
+              <Input label="Name" value={selectedNodeForm.name} onChange={(e) => setSelectedNodeForm({ ...selectedNodeForm, name: e.target.value })} />
+              <Select label="Type" value={selectedNodeForm.type} onChange={(e) => setSelectedNodeForm({ ...selectedNodeForm, type: e.target.value })} options={NODE_TYPE_OPTIONS} />
+              <div className="grid grid-cols-2 gap-2">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                  <input type="checkbox" checked={selectedNodeForm.searchable} onChange={(e) => setSelectedNodeForm({ ...selectedNodeForm, searchable: e.target.checked })} />
+                  Searchable
+                </label>
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-600">
+                  <input type="checkbox" checked={selectedNodeForm.restricted} onChange={(e) => setSelectedNodeForm({ ...selectedNodeForm, restricted: e.target.checked })} />
+                  Restricted
+                </label>
+              </div>
+              <Input label="Aliases" value={selectedNodeForm.aliases} onChange={(e) => setSelectedNodeForm({ ...selectedNodeForm, aliases: e.target.value })} placeholder="Main office, Front desk" />
+              <Input label="Tags" value={selectedNodeForm.tags} onChange={(e) => setSelectedNodeForm({ ...selectedNodeForm, tags: e.target.value })} placeholder="admin, visitor" />
+              <Button onClick={saveSelectedNode} loading={saving} disabled={!selectedNodeForm.name} size="sm">Save node</Button>
+            </div>
+            <div className="mt-4"><NodeTypeBadge type={selectedNode.type} /></div>
             {selectedNode.floor && (
               <p className="font-mono text-xs text-slate-400 mt-2">
                 Floor {selectedNode.floor.levelNumber} — {selectedNode.floor.name}
@@ -660,10 +725,10 @@ export function GraphEditor({
           <label className="block border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center cursor-pointer hover:border-[#141414] transition-colors group">
             <ImagePlus className="w-8 h-8 mx-auto mb-2 text-slate-300 group-hover:text-slate-500" />
             <p className="text-sm font-semibold text-slate-500">Drop a floor plan image or click to upload</p>
-            <p className="text-xs text-slate-400 mt-1">PNG, JPG, SVG, WebP — max 10 MB</p>
+            <p className="text-xs text-slate-400 mt-1">PNG, JPG, WebP — max 10 MB</p>
             <input
               type="file"
-              accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
               className="hidden"
               onChange={async (e) => {
                 const file = e.target.files?.[0];
@@ -698,9 +763,9 @@ export function GraphEditor({
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" onClick={() => setShowFloorPlan(false)}>Cancel</Button>
             {floorPlanImages[selectedFloorId] && (
-              <Button variant="secondary" onClick={() => { setFloorPlanUrl(""); saveFloorPlan(); }} loading={saving}>Remove</Button>
+              <Button variant="secondary" onClick={() => saveFloorPlan("")} loading={saving}>Remove</Button>
             )}
-            <Button onClick={saveFloorPlan} loading={saving} disabled={!floorPlanUrl}>Save</Button>
+            <Button onClick={() => saveFloorPlan()} loading={saving} disabled={!floorPlanUrl}>Save</Button>
           </div>
         </div>
       </Modal>
@@ -710,6 +775,18 @@ export function GraphEditor({
         <div className="space-y-4">
           <Input label="Node name" value={addNodeForm.name} onChange={(e) => setAddNodeForm({ ...addNodeForm, name: e.target.value })} placeholder="Reception Desk" autoFocus />
           <Select label="Node type" value={addNodeForm.type} onChange={(e) => setAddNodeForm({ ...addNodeForm, type: e.target.value })} options={NODE_TYPE_OPTIONS} />
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+              <input type="checkbox" checked={addNodeForm.searchable} onChange={(e) => setAddNodeForm({ ...addNodeForm, searchable: e.target.checked })} />
+              Searchable
+            </label>
+            <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+              <input type="checkbox" checked={addNodeForm.restricted} onChange={(e) => setAddNodeForm({ ...addNodeForm, restricted: e.target.checked })} />
+              Restricted
+            </label>
+          </div>
+          <Input label="Aliases" value={addNodeForm.aliases} onChange={(e) => setAddNodeForm({ ...addNodeForm, aliases: e.target.value })} placeholder="Comma-separated alternate names" />
+          <Input label="Tags" value={addNodeForm.tags} onChange={(e) => setAddNodeForm({ ...addNodeForm, tags: e.target.value })} placeholder="Comma-separated tags" />
           <div className="flex gap-3 pt-2">
             <Button variant="secondary" onClick={() => setShowAddNode(false)}>Cancel</Button>
             <Button onClick={addNode} loading={saving} disabled={!addNodeForm.name}>Add Node</Button>

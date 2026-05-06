@@ -2,16 +2,18 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getOrgRole, roleAllows } from "@/lib/permissions";
 import Link from "next/link";
 import { Layers, MapPin, Network, QrCode } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { PublishButton } from "./PublishButton";
 
-export default async function BuildingDetailPage({ params }: { params: { buildingId: string } }) {
+export default async function BuildingDetailPage({ params }: { params: Promise<{ buildingId: string }> }) {
+  const resolvedParams = await params;
   const session = await getServerSession(authOptions);
   const building = await db.building.findUnique({
-    where: { id: params.buildingId },
+    where: { id: resolvedParams.buildingId },
     include: {
       floors: { orderBy: { levelNumber: "asc" } },
       _count: { select: { nodes: true, edges: true, floors: true, qrCheckpoints: true } },
@@ -21,8 +23,9 @@ export default async function BuildingDetailPage({ params }: { params: { buildin
 
   if (!building) notFound();
 
-  const isOwner = building.organization.ownerId === session?.user?.id;
-  const base = `/dashboard/buildings/${params.buildingId}`;
+  const role = session?.user?.id ? await getOrgRole(building.organizationId, session.user.id) : null;
+  const canPublish = role ? roleAllows(role, ["OWNER", "ADMIN"]) : false;
+  const base = `/dashboard/buildings/${resolvedParams.buildingId}`;
 
   return (
     <div>
@@ -32,7 +35,7 @@ export default async function BuildingDetailPage({ params }: { params: { buildin
           {building.address && <p className="text-slate-500 mt-1 text-sm">{building.address}</p>}
           {building.description && <p className="text-slate-600 mt-2 max-w-xl text-sm">{building.description}</p>}
         </div>
-        {isOwner && <div className="shrink-0"><PublishButton buildingId={building.id} status={building.status} /></div>}
+        {canPublish && <div className="shrink-0"><PublishButton buildingId={building.id} status={building.status} /></div>}
       </div>
 
       {/* Stats */}

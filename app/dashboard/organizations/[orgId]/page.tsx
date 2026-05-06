@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { canAccessOrg, getOrgRole, roleAllows } from "@/lib/permissions";
 import Link from "next/link";
 import { Plus, Building2 } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -11,11 +12,17 @@ import { BuildingStatusBadge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { NewBuildingModal } from "./NewBuildingModal";
 
-export default async function OrgDetailPage({ params }: { params: { orgId: string } }) {
+export default async function OrgDetailPage({ params }: { params: Promise<{ orgId: string }> }) {
+  const resolvedParams = await params;
   const session = await getServerSession(authOptions);
 
+  if (!session?.user?.id) notFound();
+
+  const allowed = await canAccessOrg(resolvedParams.orgId, session.user.id);
+  if (!allowed) notFound();
+
   const org = await db.organization.findUnique({
-    where: { id: params.orgId },
+    where: { id: resolvedParams.orgId },
     include: {
       buildings: {
         include: { _count: { select: { nodes: true, floors: true } } },
@@ -27,7 +34,8 @@ export default async function OrgDetailPage({ params }: { params: { orgId: strin
 
   if (!org) notFound();
 
-  const isOwner = org.ownerId === session?.user?.id;
+  const role = await getOrgRole(org.id, session.user.id);
+  const canCreateBuilding = role ? roleAllows(role, ["OWNER", "ADMIN"]) : false;
 
   return (
     <div>
@@ -35,7 +43,7 @@ export default async function OrgDetailPage({ params }: { params: { orgId: strin
         title={org.name}
         subtitle={`/${org.slug} · ${org._count.buildings} buildings`}
         actions={
-          isOwner ? <NewBuildingModal orgId={org.id} /> : null
+          canCreateBuilding ? <NewBuildingModal orgId={org.id} /> : null
         }
       />
 
