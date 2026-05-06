@@ -18,6 +18,7 @@ interface Node {
   description?: string | null;
   aliases?: string[];
   tags?: string[];
+  searchable?: boolean;
   floor?: { name: string; levelNumber: number } | null;
 }
 interface RouteStep {
@@ -67,24 +68,37 @@ export function IndoorNavigator({
   const [query, setQuery] = useState("");
   const [offlinePackage, setOfflinePackage] = useState<OfflineBuildingPackage | null>(null);
   const [offlineNotice, setOfflineNotice] = useState("");
+  const [isOnline, setIsOnline] = useState(true);
+
+  useEffect(() => {
+    const updateOnlineState = () => setIsOnline(typeof navigator === "undefined" ? true : navigator.onLine);
+    updateOnlineState();
+    window.addEventListener("online", updateOnlineState);
+    window.addEventListener("offline", updateOnlineState);
+    return () => {
+      window.removeEventListener("online", updateOnlineState);
+      window.removeEventListener("offline", updateOnlineState);
+    };
+  }, []);
 
   useEffect(() => {
     loadOfflinePackage(buildingId)
       .then((pkg) => {
         setOfflinePackage(pkg);
-        if (!navigator.onLine && pkg) setOfflineNotice("Offline mode: using the downloaded building package in this browser.");
+        if (!isOnline && pkg) setOfflineNotice("Offline mode: using the downloaded building package in this browser.");
       })
       .catch(() => setOfflineNotice("Offline storage is unavailable in this browser session."));
-  }, [buildingId]);
+  }, [buildingId, isOnline]);
 
   const offlineNodes: Node[] = offlinePackage?.nodes.map((node) => ({
     ...node,
     floor: offlinePackage.floors.find((floor) => floor.id === node.floorId) ?? null,
   })) ?? [];
-  const displayNodes = offlinePackage && !navigator.onLine ? offlineNodes : nodes;
+  const publicOfflineNodes = offlineNodes.filter((node) => node.searchable !== false);
+  const displayNodes = offlinePackage && !isOnline ? publicOfflineNodes : nodes;
   const fromNode = displayNodes.find((n) => n.id === fromId);
   const toNode = displayNodes.find((n) => n.id === toId);
-  const filtered = offlinePackage && !navigator.onLine
+  const filtered = offlinePackage && !isOnline
     ? searchOfflineNodes(offlinePackage, query).map((node) => ({ ...node, floor: offlinePackage.floors.find((floor) => floor.id === node.floorId) ?? null }))
     : query
       ? displayNodes.filter((n) => {
@@ -103,7 +117,7 @@ export function IndoorNavigator({
     setRoute(null);
     setActiveStep(0);
     try {
-      if (!navigator.onLine && offlinePackage) {
+      if (!isOnline && offlinePackage) {
         const offlineRoute = routeOffline(offlinePackage, fromId, toId, { accessibilityMode: accessible });
         if (!offlineRoute) {
           setError(accessible ? "No accessible offline route found in the downloaded package." : "No offline route found in the downloaded package.");
@@ -315,15 +329,22 @@ export function IndoorNavigator({
       </div>
 
       {/* Accessibility */}
-      <label className="flex items-center gap-4 bg-white rounded-2xl border border-slate-200 px-6 py-4 cursor-pointer">
+      <label className="flex items-center gap-4 bg-white rounded-2xl border border-slate-200 px-6 py-4 cursor-pointer focus-within:ring-2 focus-within:ring-blue-500">
         <Accessibility className="w-5 h-5 text-blue-500 shrink-0" />
         <span className="text-sm font-medium flex-1">Accessible route (avoid stairs)</span>
-        <div
-          onClick={(e) => { e.preventDefault(); setAccessible((a) => !a); }}
+        <input
+          type="checkbox"
+          checked={accessible}
+          onChange={(e) => setAccessible(e.target.checked)}
+          className="sr-only"
+          aria-label="Accessible route, avoid stairs"
+        />
+        <span
+          aria-hidden="true"
           className={cn("w-12 h-6 rounded-full transition-colors relative shrink-0", accessible ? "bg-[#3B82F6]" : "bg-slate-200")}
         >
-          <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform", accessible ? "translate-x-7" : "translate-x-1")} />
-        </div>
+          <span className={cn("absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform", accessible ? "translate-x-7" : "translate-x-1")} />
+        </span>
       </label>
 
       {/* Go button */}

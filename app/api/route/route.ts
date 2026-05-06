@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { canAccessBuilding, MAP_EDIT_ROLES } from "@/lib/permissions";
 import { buildGraph } from "@/lib/routing/graph-builder";
 import { dijkstra } from "@/lib/routing/dijkstra";
+import { getClientIp, rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 
 const RouteRequestSchema = z.object({
   buildingId: z.string().cuid(),
@@ -16,6 +17,11 @@ const RouteRequestSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const limited = rateLimit(`route:${getClientIp(req)}`, 120, 60 * 1000);
+  if (!limited.allowed) {
+    return NextResponse.json({ error: "Too many route requests. Try again shortly." }, { status: 429, headers: rateLimitHeaders(limited) });
+  }
+
   try {
     const body = await req.json();
     const parsed = RouteRequestSchema.safeParse(body);

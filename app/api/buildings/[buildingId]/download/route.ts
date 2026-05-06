@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { buildOfflinePackage, readSnapshotVersion } from "@/lib/offline-package";
+import { getClientIp, rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 
-export async function GET(_: Request, context: { params: Promise<{ buildingId: string }> }) {
+export async function GET(req: Request, context: { params: Promise<{ buildingId: string }> }) {
+  const limited = rateLimit(`offline-download:${getClientIp(req)}`, 60, 60 * 1000);
+  if (!limited.allowed) {
+    return NextResponse.json({ error: "Too many download requests. Try again shortly." }, { status: 429, headers: rateLimitHeaders(limited) });
+  }
+
   const params = await context.params;
   const building = await db.building.findFirst({
     where: { id: params.buildingId, status: "PUBLISHED", visibility: "PUBLIC" },

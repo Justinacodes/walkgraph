@@ -57,9 +57,12 @@ export default async function NavigatePage({
   if (resolvedSearchParams.node) {
     const requestedCode = resolvedSearchParams.node.trim();
     const checkpoint = await db.qRCheckpoint.findFirst({
-      where: requestedCode.length <= 8
-        ? { code: { endsWith: requestedCode, mode: "insensitive" } }
-        : { code: requestedCode },
+      where: {
+        buildingId: resolvedParams.buildingId,
+        ...(requestedCode.length <= 8
+          ? { code: { endsWith: requestedCode, mode: "insensitive" } }
+          : { code: requestedCode }),
+      },
       select: {
         code: true,
         label: true,

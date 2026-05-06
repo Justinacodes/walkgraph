@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getClientIp, rateLimit, rateLimitHeaders } from "@/lib/rate-limit";
 
 export async function GET(req: Request) {
+  const limited = rateLimit(`search:${getClientIp(req)}`, 120, 60 * 1000);
+  if (!limited.allowed) {
+    return NextResponse.json({ error: "Too many search requests. Try again shortly." }, { status: 429, headers: rateLimitHeaders(limited) });
+  }
+
   const { searchParams } = new URL(req.url);
   const q = searchParams.get("q")?.trim();
   const buildingId = searchParams.get("buildingId");

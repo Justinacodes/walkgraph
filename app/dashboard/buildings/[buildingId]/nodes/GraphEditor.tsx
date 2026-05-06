@@ -725,10 +725,10 @@ export function GraphEditor({
           <label className="block border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center cursor-pointer hover:border-[#141414] transition-colors group">
             <ImagePlus className="w-8 h-8 mx-auto mb-2 text-slate-300 group-hover:text-slate-500" />
             <p className="text-sm font-semibold text-slate-500">Drop a floor plan image or click to upload</p>
-            <p className="text-xs text-slate-400 mt-1">PNG, JPG, SVG, WebP — max 10 MB</p>
+            <p className="text-xs text-slate-400 mt-1">PNG, JPG, WebP — max 10 MB</p>
             <input
               type="file"
-              accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+              accept="image/png,image/jpeg,image/jpg,image/webp"
               className="hidden"
               onChange={async (e) => {
                 const file = e.target.files?.[0];

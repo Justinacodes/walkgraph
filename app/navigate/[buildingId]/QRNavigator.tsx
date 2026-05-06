@@ -28,6 +28,7 @@ interface Node {
   description?: string | null;
   aliases?: string[];
   tags?: string[];
+  searchable?: boolean;
   floor?: { name: string; levelNumber: number } | null;
 }
 interface RouteStep {
@@ -90,19 +91,31 @@ export function QRNavigator({
   const [manualCode, setManualCode] = useState(qrResolution.requestedCode ?? "");
   const [offlinePackage, setOfflinePackage] = useState<OfflineBuildingPackage | null>(null);
   const [offlineNotice, setOfflineNotice] = useState("");
+  const [isOnline, setIsOnline] = useState(true);
 
   useEffect(() => {
     setFromId(currentNodeId ?? "");
   }, [currentNodeId]);
 
   useEffect(() => {
+    const updateOnlineState = () => setIsOnline(typeof navigator === "undefined" ? true : navigator.onLine);
+    updateOnlineState();
+    window.addEventListener("online", updateOnlineState);
+    window.addEventListener("offline", updateOnlineState);
+    return () => {
+      window.removeEventListener("online", updateOnlineState);
+      window.removeEventListener("offline", updateOnlineState);
+    };
+  }, []);
+
+  useEffect(() => {
     loadOfflinePackage(buildingId)
       .then((pkg) => {
         setOfflinePackage(pkg);
-        if (!navigator.onLine && pkg) setOfflineNotice("Offline mode: using the downloaded building package in this browser.");
+        if (!isOnline && pkg) setOfflineNotice("Offline mode: using the downloaded building package in this browser.");
       })
       .catch(() => setOfflineNotice("Offline storage is unavailable in this browser session."));
-  }, [buildingId]);
+  }, [buildingId, isOnline]);
 
   useEffect(() => {
     setManualCode(qrResolution.requestedCode ?? "");
@@ -117,11 +130,12 @@ export function QRNavigator({
     ...node,
     floor: offlinePackage.floors.find((floor) => floor.id === node.floorId) ?? null,
   })) ?? [];
-  const displayNodes = offlinePackage && !navigator.onLine ? offlineNodes : nodes;
+  const publicOfflineNodes = offlineNodes.filter((node) => node.searchable !== false);
+  const displayNodes = offlinePackage && !isOnline ? publicOfflineNodes : nodes;
   const fromNode = displayNodes.find((n) => n.id === fromId);
   const toNode = displayNodes.find((n) => n.id === toId);
 
-  const filteredNodes = offlinePackage && !navigator.onLine
+  const filteredNodes = offlinePackage && !isOnline
     ? searchOfflineNodes(offlinePackage, query).map((node) => ({ ...node, floor: offlinePackage.floors.find((floor) => floor.id === node.floorId) ?? null }))
     : query
       ? displayNodes.filter((n) => [n.name, n.description, ...(n.aliases ?? []), ...(n.tags ?? []), n.floor?.name]
@@ -138,7 +152,7 @@ export function QRNavigator({
     setRoute(null);
     setActiveStep(0);
     try {
-      if (!navigator.onLine && offlinePackage) {
+      if (!isOnline && offlinePackage) {
         const offlineRoute = routeOffline(offlinePackage, fromId, toId, { accessibilityMode: accessible });
         if (!offlineRoute) {
           setError(accessible ? "No accessible offline route found in the downloaded package." : "No offline route found in the downloaded package.");
@@ -178,7 +192,7 @@ export function QRNavigator({
 
   function applyManualCode() {
     const nextCode = manualCode.trim();
-    if (!navigator.onLine && offlinePackage && nextCode) {
+    if (!isOnline && offlinePackage && nextCode) {
       const checkpointNode = resolveOfflineCheckpoint(offlinePackage, nextCode);
       if (checkpointNode) {
         setFromId(checkpointNode.id);
@@ -260,7 +274,7 @@ export function QRNavigator({
         <button onClick={() => { setSearchTarget("to"); setScreen("search"); }} className="flex w-full items-center gap-3 px-5 py-4 transition-colors hover:bg-slate-50"><MapPin className="h-3.5 w-3.5 shrink-0 text-[#3B82F6]" /><span className={cn("flex-1 text-left text-sm", toId ? "font-semibold text-[#141414]" : "text-slate-400")}>{toNode ? toNode.name : "Where do you want to go?"}</span><ChevronRight className="h-4 w-4 text-slate-300" /></button>
       </div>
 
-      <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4"><Accessibility className="h-4 w-4 shrink-0 text-blue-500" /><span className="flex-1 text-sm font-medium">Accessible route (avoid stairs)</span><div onClick={() => setAccessible((a) => !a)} className={cn("relative h-6 w-11 rounded-full transition-colors", accessible ? "bg-[#3B82F6]" : "bg-slate-200")}><div className={cn("absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform", accessible ? "translate-x-6" : "translate-x-1")} /></div></label>
+      <label className="flex cursor-pointer items-center gap-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 focus-within:ring-2 focus-within:ring-blue-500"><Accessibility className="h-4 w-4 shrink-0 text-blue-500" /><span className="flex-1 text-sm font-medium">Accessible route (avoid stairs)</span><input type="checkbox" checked={accessible} onChange={(e) => setAccessible(e.target.checked)} className="sr-only" aria-label="Accessible route, avoid stairs" /><span aria-hidden="true" className={cn("relative h-6 w-11 rounded-full transition-colors", accessible ? "bg-[#3B82F6]" : "bg-slate-200")}><span className={cn("absolute top-1 h-4 w-4 rounded-full bg-white shadow transition-transform", accessible ? "translate-x-6" : "translate-x-1")} /></span></label>
 
       <button onClick={navigate} disabled={!fromId || !toId || loading} className="flex w-full items-center justify-center gap-3 rounded-2xl bg-[#141414] py-5 text-base font-bold text-white disabled:opacity-40">{loading ? <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg> : <Navigation className="h-5 w-5" />}Get Directions</button>
 

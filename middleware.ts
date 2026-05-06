@@ -4,7 +4,6 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/api/organizations/:path*",
-    "/api/buildings/:path*",
     "/api/floors/:path*",
     "/api/nodes/:path*",
     "/api/edges/:path*",

@@ -119,18 +119,28 @@ export async function markOfflinePackageStatus(buildingId: string, latestPackage
 
 export function searchOfflineNodes(pkg: OfflineBuildingPackage, query: string) {
   const normalized = query.trim().toLowerCase();
-  if (!normalized) return pkg.nodes;
+  const publicNodes = pkg.nodes.filter((node) => node.searchable && !node.restricted);
+  if (!normalized) return publicNodes;
   const matches = new Set(pkg.searchIndex.filter((entry) => entry.terms.some((term) => term.includes(normalized))).map((entry) => entry.nodeId));
-  return pkg.nodes.filter((node) => matches.has(node.id));
+  return publicNodes.filter((node) => matches.has(node.id));
 }
 
 export function resolveOfflineCheckpoint(pkg: OfflineBuildingPackage, code: string) {
-  const checkpoint = pkg.qrCheckpoints.find((item) => item.code === code && item.active);
+  const normalizedCode = code.trim().toLowerCase();
+  const checkpoint = pkg.qrCheckpoints.find((item) => {
+    if (!item.active) return false;
+    const fullCode = item.code.toLowerCase();
+    return fullCode === normalizedCode || (normalizedCode.length <= 8 && fullCode.endsWith(normalizedCode));
+  });
   if (!checkpoint) return null;
-  return pkg.nodes.find((node) => node.id === checkpoint.nodeId) ?? null;
+  return pkg.nodes.find((node) => node.id === checkpoint.nodeId && node.searchable && !node.restricted) ?? null;
 }
 
 export function routeOffline(pkg: OfflineBuildingPackage, fromNodeId: string, toNodeId: string, options: RouteOptions = {}): RouteResult | null {
+  const fromNode = pkg.nodes.find((node) => node.id === fromNodeId);
+  const toNode = pkg.nodes.find((node) => node.id === toNodeId);
+  if (!fromNode?.searchable || fromNode.restricted || !toNode?.searchable || toNode.restricted) return null;
+
   return dijkstra(
     pkg.nodes.map((node): GraphNode => ({ id: node.id, name: node.name, type: node.type, floorId: node.floorId, x: node.x, y: node.y, searchable: node.searchable, restricted: node.restricted })),
     pkg.edges.map((edge): GraphEdge => ({ ...edge })),

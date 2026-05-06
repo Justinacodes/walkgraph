@@ -6,26 +6,65 @@
 - Runtime mode: hybrid
 - Session intent: full-project
 - Pilot target: web/PWA-only school/campus MVP with basic offline building packages
+- Final handoff: `docs/Builder_Handoff_Report.md`
+- Demo setup: `docs/Demo_Seed_Data.md`
 
 ## Current Status
 
-The orchestration has been revised into an approval-gated Takomi workflow.
+The Takomi orchestration has completed the design, build, review, and handoff gates for the web/PWA school/campus pilot.
 
 | Gate | Status | Notes |
 | --- | --- | --- |
 | Gate 1: Design blueprints | completed | Tasks 02-06 completed as documentation-only design work. |
 | Gate 2: Owner approval | completed | Owner approved the five feature blueprints and authorized build to proceed. |
-| Gate 3: Build sequence | in-progress | Task 07 completed; task 08 is next. |
-| Gate 4: Review and handoff | blocked | Task 14 runs after build completion. |
+| Gate 3: Build sequence | completed | Tasks 07-13 completed. |
+| Gate 4: Review and handoff | completed | Task 14 completed with final verification and GPT-5.5 high review. |
+
+## Task 14 QA / Handoff Results
+
+### Final Review Outcome
+
+- `oauth-router/gpt-5.5` with `thinking high` completed the final/deep read-only review.
+- Final verdict: **PASS — no P0/P1 blockers found**.
+- Earlier P1s found during review were fixed before handoff: public offline download middleware, public graph data boundaries, offline hidden-node exposure, short QR code fallback, upload hardening, rate limiting, accessible toggles, and stale docs.
+
+### Verification
+
+```bash
+python scripts/vibe-verify.py
+```
+
+Result: **PASS**
+
+- TypeScript: PASS
+- Lint: PASS
+- Build: PASS
+
+### FR Coverage
+
+- FR-001 through FR-006: MUS complete.
+- FR-007: bounded v1 offline package complete for published/public read-only browser use.
+- FR-008: bounded v1 accessibility-aware route preference complete with metadata-dependent limitations documented.
+
+### Launch Blockers
+
+None known after final verification and deep review.
+
+### Future Work / Non-Blockers
+
+- Replace in-memory rate limiting with Redis/Upstash/database-backed limits for production scale.
+- Add automated Prisma seed script; current pilot seed path is manual in `docs/Demo_Seed_Data.md`.
+- Decompose the large graph editor component.
+- Expand team management UI beyond the existing permission/model foundation.
+- Upgrade/migrate from NextAuth v4 when a safe path resolves the remaining transitive moderate `uuid` advisory.
+- Native mobile, AR, beacons, LiDAR, real-time positioning, and robust offline sync remain deferred.
 
 ## Model Routing
 
 - Sub-agent provider: `oauth-router`.
 - Strategy doc: `docs/Model_Routing_Strategy.md`.
-- Senior brain: `oauth-router/gpt-5.5` with `thinking: low|medium|high` based on risk.
-- Default workhorse: `oauth-router/gpt-5.4` with `thinking: high`.
-- Fast junior implementer: `oauth-router/gpt-5.4-mini` with `thinking: high`, only for small, explicit, isolated work.
-- Preflight requirement: run and surface `pi --list-models` before any sub-agent dispatch or model override.
+- Senior brain: `oauth-router/gpt-5.5` with `thinking: high` for final review.
+- Preflight requirement was satisfied via visible `pi --list-models`.
 
 ## Key Decisions
 
@@ -44,6 +83,6 @@ The orchestration has been revised into an approval-gated Takomi workflow.
 - `docs/features/03_Routing_Instruction_Design.md`
 - `docs/features/04_Offline_QR_Design.md`
 
-## Next Action
+## Recommended Next Action
 
-Begin build task 08: Auth, roles, organizations, and team permissions. Use `oauth-router/gpt-5.5` for this security-sensitive work.
+Finalize the pilot handoff or begin a small post-MVP hardening cycle for automated seed scripts, production-grade rate limiting, and graph editor decomposition.

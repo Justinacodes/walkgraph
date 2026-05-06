@@ -94,6 +94,7 @@ export function buildOfflinePackage({ building, packageVersion, publishedAt, sou
   const floorIds = new Set(building.floors.map((floor) => floor.id));
   const clientNodes = building.nodes.filter((node) => !node.restricted && floorIds.has(node.floorId));
   const clientNodeIds = new Set(clientNodes.map((node) => node.id));
+  const publicNodeIds = new Set(clientNodes.filter((node) => node.searchable).map((node) => node.id));
   const clientEdges = building.edges.filter((edge) => !edge.restricted && clientNodeIds.has(edge.fromNodeId) && clientNodeIds.has(edge.toNodeId));
 
   return {
@@ -117,7 +118,7 @@ export function buildOfflinePackage({ building, packageVersion, publishedAt, sou
     nodes: clientNodes,
     edges: clientEdges,
     qrCheckpoints: building.qrCheckpoints
-      .filter((checkpoint) => checkpoint.active && checkpoint.buildingId === building.id && floorIds.has(checkpoint.floorId) && nodeIds.has(checkpoint.nodeId) && clientNodeIds.has(checkpoint.nodeId))
+      .filter((checkpoint) => checkpoint.active && checkpoint.buildingId === building.id && floorIds.has(checkpoint.floorId) && nodeIds.has(checkpoint.nodeId) && publicNodeIds.has(checkpoint.nodeId))
       .map((checkpoint) => ({ ...checkpoint, active: true })),
     searchIndex: clientNodes.filter((node) => node.searchable).map((node) => ({
       nodeId: node.id,
