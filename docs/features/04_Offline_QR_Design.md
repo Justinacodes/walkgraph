@@ -1,5 +1,9 @@
 # Feature Blueprint: Offline Package and QR Positioning Design
 
+## Task 12 Build Update
+
+Task 12 now hardens `GET /api/qr/[nodeId]` to enforce mapper/admin authorization, reuse stable active checkpoints, repair checkpoint building/floor consistency when needed, and generate canonical visitor links with `NEXT_PUBLIC_APP_URL` via `/navigate/{buildingId}?node={checkpointCode}`. The dashboard QR manager supports loading/generating printable checkpoint cards with QR image, short manual code, and fallback URL, while the public navigator now surfaces resolved, inactive, and invalid checkpoint states and keeps manual start selection available.
+
 ## Goal
 
 Design the WalkGraph v1 **free-first web/PWA** behavior for QR checkpoint generation, scan-based start positioning, printable QR outputs, and read-only offline building packages stored in the browser for basic offline search/routing.

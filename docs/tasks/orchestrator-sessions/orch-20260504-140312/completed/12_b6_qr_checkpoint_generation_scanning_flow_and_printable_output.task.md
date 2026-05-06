@@ -2,7 +2,7 @@
 
 **Stage:** build
 **Gate:** Gate 3 - Build sequence
-**Status:** blocked until Gate 2 owner approval
+**Status:** completed
 **Role:** code
 **Workflow:** Takomi `vibe-build`
 **Required Skills:** takomi, nextjs-standards
@@ -44,6 +44,6 @@ Implement or harden QR checkpoints so visitors can scan a printed code and start
 
 ## Definition of Done
 
-- Mapper can generate printable QR codes for nodes.
-- Scanned/opened QR link starts the public navigation flow at the correct node.
-- TypeScript and project verification pass or blockers are documented.
+- [x] Mapper can generate printable QR codes for nodes.
+- [x] Scanned/opened QR link starts the public navigation flow at the correct node.
+- [x] TypeScript and project verification pass or blockers are documented.
