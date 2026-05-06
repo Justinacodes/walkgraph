@@ -47,9 +47,9 @@ Provider: `oauth-router`.
 
 Detailed routing policy: `docs/Model_Routing_Strategy.md`.
 
-- `oauth-router/gpt-5.5`: senior brain for architecture, security, complex debugging, cross-file risk, final/deep review.
-- `oauth-router/gpt-5.4`: default workhorse for normal coding, planning, UI logic, implementation, debugging, and review.
-- `oauth-router/gpt-5.4-mini`: fast junior implementer for small, explicit, isolated edits only.
+- `oauth-router/gpt-5.5`: senior brain for architecture, security, complex debugging, cross-file risk, final/deep review. Use `thinking: low`, `medium`, or `high` based on task difficulty/risk.
+- `oauth-router/gpt-5.4`: default serious workhorse for normal coding, planning, UI logic, implementation, debugging, and review. Use `thinking: high`.
+- `oauth-router/gpt-5.4-mini`: fast junior implementer for small, explicit, isolated edits only. Use `thinking: high`.
 
 Before sub-agent dispatch or model override, run and surface `pi --list-models`.
 

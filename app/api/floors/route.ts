@@ -3,12 +3,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { canAccessBuilding, MAP_EDIT_ROLES } from "@/lib/permissions";
+import { canReadBuildingGraph } from "@/lib/access-control";
 import { CreateFloorSchema } from "@/lib/validations/floor";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const buildingId = searchParams.get("buildingId");
   if (!buildingId) return NextResponse.json({ error: "buildingId required" }, { status: 400 });
+
+  const session = await getServerSession(authOptions);
+  const access = await canReadBuildingGraph(buildingId, session?.user?.id);
+  if (!access.exists || !access.allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const floors = await db.floor.findMany({
     where: { buildingId },

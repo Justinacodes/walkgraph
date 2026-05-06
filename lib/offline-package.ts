@@ -92,7 +92,7 @@ interface BuildPackageInput {
 export function buildOfflinePackage({ building, packageVersion, publishedAt, source }: BuildPackageInput): OfflineBuildingPackage {
   const nodeIds = new Set(building.nodes.map((node) => node.id));
   const floorIds = new Set(building.floors.map((floor) => floor.id));
-  const clientNodes = building.nodes.filter((node) => node.searchable && !node.restricted && floorIds.has(node.floorId));
+  const clientNodes = building.nodes.filter((node) => !node.restricted && floorIds.has(node.floorId));
   const clientNodeIds = new Set(clientNodes.map((node) => node.id));
   const clientEdges = building.edges.filter((edge) => !edge.restricted && clientNodeIds.has(edge.fromNodeId) && clientNodeIds.has(edge.toNodeId));
 
@@ -119,7 +119,7 @@ export function buildOfflinePackage({ building, packageVersion, publishedAt, sou
     qrCheckpoints: building.qrCheckpoints
       .filter((checkpoint) => checkpoint.active && checkpoint.buildingId === building.id && floorIds.has(checkpoint.floorId) && nodeIds.has(checkpoint.nodeId) && clientNodeIds.has(checkpoint.nodeId))
       .map((checkpoint) => ({ ...checkpoint, active: true })),
-    searchIndex: clientNodes.map((node) => ({
+    searchIndex: clientNodes.filter((node) => node.searchable).map((node) => ({
       nodeId: node.id,
       terms: Array.from(new Set([node.name, node.type, node.description, ...node.aliases, ...node.tags].filter((term): term is string => Boolean(term)).map((term) => term.toLowerCase()))),
     })),

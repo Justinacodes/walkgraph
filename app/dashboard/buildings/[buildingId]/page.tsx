@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getOrgRole, roleAllows } from "@/lib/permissions";
 import Link from "next/link";
 import { Layers, MapPin, Network, QrCode } from "lucide-react";
 import { Card } from "@/components/ui/Card";
@@ -22,7 +23,8 @@ export default async function BuildingDetailPage({ params }: { params: Promise<{
 
   if (!building) notFound();
 
-  const isOwner = building.organization.ownerId === session?.user?.id;
+  const role = session?.user?.id ? await getOrgRole(building.organizationId, session.user.id) : null;
+  const canPublish = role ? roleAllows(role, ["OWNER", "ADMIN"]) : false;
   const base = `/dashboard/buildings/${resolvedParams.buildingId}`;
 
   return (
@@ -33,7 +35,7 @@ export default async function BuildingDetailPage({ params }: { params: Promise<{
           {building.address && <p className="text-slate-500 mt-1 text-sm">{building.address}</p>}
           {building.description && <p className="text-slate-600 mt-2 max-w-xl text-sm">{building.description}</p>}
         </div>
-        {isOwner && <div className="shrink-0"><PublishButton buildingId={building.id} status={building.status} /></div>}
+        {canPublish && <div className="shrink-0"><PublishButton buildingId={building.id} status={building.status} /></div>}
       </div>
 
       {/* Stats */}

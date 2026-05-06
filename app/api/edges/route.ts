@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { canAccessBuilding, MAP_EDIT_ROLES } from "@/lib/permissions";
+import { canReadBuildingGraph } from "@/lib/access-control";
 import { CreateEdgeSchema } from "@/lib/validations/edge";
 
 export async function GET(req: Request) {
@@ -10,8 +11,15 @@ export async function GET(req: Request) {
   const buildingId = searchParams.get("buildingId");
   if (!buildingId) return NextResponse.json({ error: "buildingId required" }, { status: 400 });
 
+  const session = await getServerSession(authOptions);
+  const access = await canReadBuildingGraph(buildingId, session?.user?.id);
+  if (!access.exists || !access.allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const publicFilter = !access.memberAccess
+    ? { restricted: false, fromNode: { searchable: true, restricted: false }, toNode: { searchable: true, restricted: false } }
+    : {};
   const edges = await db.edge.findMany({
-    where: { buildingId },
+    where: { buildingId, ...publicFilter },
     include: {
       fromNode: { select: { id: true, name: true, type: true } },
       toNode: { select: { id: true, name: true, type: true } },

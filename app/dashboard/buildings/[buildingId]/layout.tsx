@@ -1,8 +1,11 @@
 import { notFound } from "next/navigation";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import Link from "next/link";
 import { cn } from "@/lib/utils/cn";
 import { BuildingStatusBadge } from "@/components/ui/Badge";
+import { canAccessBuilding } from "@/lib/permissions";
 
 const tabs = [
   { label: "Overview", href: "" },
@@ -21,6 +24,12 @@ export default async function BuildingLayout({
   params: Promise<{ buildingId: string }>;
 }) {
   const resolvedParams = await params;
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) notFound();
+
+  const access = await canAccessBuilding(resolvedParams.buildingId, session.user.id);
+  if (!access.exists || !access.allowed) notFound();
+
   const building = await db.building.findUnique({
     where: { id: resolvedParams.buildingId },
     include: { organization: { select: { id: true, name: true } } },

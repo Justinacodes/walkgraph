@@ -22,9 +22,9 @@ The orchestration has been revised into an approval-gated Takomi workflow.
 
 - Sub-agent provider: `oauth-router`.
 - Strategy doc: `docs/Model_Routing_Strategy.md`.
-- Senior brain: `oauth-router/gpt-5.5`.
-- Default workhorse: `oauth-router/gpt-5.4`.
-- Fast junior implementer: `oauth-router/gpt-5.4-mini` only for small, explicit, isolated work.
+- Senior brain: `oauth-router/gpt-5.5` with `thinking: low|medium|high` based on risk.
+- Default workhorse: `oauth-router/gpt-5.4` with `thinking: high`.
+- Fast junior implementer: `oauth-router/gpt-5.4-mini` with `thinking: high`, only for small, explicit, isolated work.
 - Preflight requirement: run and surface `pi --list-models` before any sub-agent dispatch or model override.
 
 ## Key Decisions

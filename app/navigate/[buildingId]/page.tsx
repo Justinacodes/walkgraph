@@ -55,8 +55,11 @@ export default async function NavigatePage({
   };
 
   if (resolvedSearchParams.node) {
-    const checkpoint = await db.qRCheckpoint.findUnique({
-      where: { code: resolvedSearchParams.node },
+    const requestedCode = resolvedSearchParams.node.trim();
+    const checkpoint = await db.qRCheckpoint.findFirst({
+      where: requestedCode.length <= 8
+        ? { code: { endsWith: requestedCode, mode: "insensitive" } }
+        : { code: requestedCode },
       select: {
         code: true,
         label: true,
@@ -75,20 +78,20 @@ export default async function NavigatePage({
     if (!checkpoint || checkpoint.buildingId !== resolvedParams.buildingId) {
       qrResolution = {
         status: "invalid",
-        requestedCode: resolvedSearchParams.node,
+        requestedCode,
         message: "This checkpoint is invalid for this building. Choose your starting point manually.",
       };
     } else if (!checkpoint.active) {
       qrResolution = {
         status: "inactive",
-        requestedCode: resolvedSearchParams.node,
+        requestedCode,
         checkpointLabel: checkpoint.label,
         message: "This checkpoint is no longer active. Choose your starting point manually.",
       };
     } else if (!checkpoint.node || !checkpoint.node.searchable || checkpoint.node.restricted) {
       qrResolution = {
         status: "invalid",
-        requestedCode: resolvedSearchParams.node,
+        requestedCode,
         checkpointLabel: checkpoint.label,
         message: "This checkpoint is unavailable right now. Choose your starting point manually.",
       };
@@ -96,7 +99,7 @@ export default async function NavigatePage({
       currentNodeId = checkpoint.node.id;
       qrResolution = {
         status: "resolved",
-        requestedCode: resolvedSearchParams.node,
+        requestedCode,
         checkpointLabel: checkpoint.label,
         message: checkpoint.label ? `Checkpoint ready: ${checkpoint.label}.` : "Checkpoint ready.",
       };

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { canAccessBuilding, MAP_EDIT_ROLES } from "@/lib/permissions";
+import { canReadBuildingGraph } from "@/lib/access-control";
 import { UpdateNodeSchema } from "@/lib/validations/node";
 
 async function getNodeAccess(nodeId: string, userId: string) {
@@ -14,6 +15,40 @@ async function getNodeAccess(nodeId: string, userId: string) {
 
 export async function GET(_: Request, context: { params: Promise<{ nodeId: string }> }) {
   const params = await context.params;
+  const nodeRef = await db.node.findUnique({
+    where: { id: params.nodeId },
+    select: { buildingId: true, searchable: true, restricted: true },
+  });
+  if (!nodeRef) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const session = await getServerSession(authOptions);
+  const access = await canReadBuildingGraph(nodeRef.buildingId, session?.user?.id);
+  if (!access.allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (!access.memberAccess) {
+    if (!nodeRef.searchable || nodeRef.restricted) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+    const node = await db.node.findUnique({
+      where: { id: params.nodeId },
+      select: {
+        id: true,
+        buildingId: true,
+        floorId: true,
+        name: true,
+        type: true,
+        description: true,
+        x: true,
+        y: true,
+        searchable: true,
+        tags: true,
+        aliases: true,
+        accessibilityFlags: true,
+        floor: { select: { name: true, levelNumber: true } },
+      },
+    });
+    return NextResponse.json(node);
+  }
+
   const node = await db.node.findUnique({
     where: { id: params.nodeId },
     include: {
@@ -23,7 +58,6 @@ export async function GET(_: Request, context: { params: Promise<{ nodeId: strin
       qrCheckpoints: true,
     },
   });
-  if (!node) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(node);
 }
 

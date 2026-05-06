@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { canAccessBuilding, MAP_EDIT_ROLES } from "@/lib/permissions";
+import { canReadBuildingGraph } from "@/lib/access-control";
 import { UpdateFloorSchema } from "@/lib/validations/floor";
 
 async function getFloorAccess(floorId: string, userId: string) {
@@ -14,11 +15,38 @@ async function getFloorAccess(floorId: string, userId: string) {
 
 export async function GET(_: Request, context: { params: Promise<{ floorId: string }> }) {
   const params = await context.params;
+  const floorRef = await db.floor.findUnique({ where: { id: params.floorId }, select: { buildingId: true } });
+  if (!floorRef) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const session = await getServerSession(authOptions);
+  const access = await canReadBuildingGraph(floorRef.buildingId, session?.user?.id);
+  if (!access.allowed) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  if (!access.memberAccess) {
+    const floor = await db.floor.findUnique({
+      where: { id: params.floorId },
+      select: {
+        id: true,
+        buildingId: true,
+        name: true,
+        levelNumber: true,
+        description: true,
+        accessibilityNotes: true,
+        nodes: {
+          where: { searchable: true, restricted: false },
+          orderBy: { name: "asc" },
+          select: { id: true, name: true, type: true, description: true, searchable: true, aliases: true, tags: true },
+        },
+        _count: { select: { nodes: true } },
+      },
+    });
+    return NextResponse.json(floor);
+  }
+
   const floor = await db.floor.findUnique({
     where: { id: params.floorId },
     include: { nodes: { orderBy: { name: "asc" } }, _count: { select: { nodes: true } } },
   });
-  if (!floor) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(floor);
 }
 
