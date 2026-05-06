@@ -10,17 +10,33 @@ import { formatWalkTime, formatDistance } from "@/lib/utils/format";
 
 interface Floor { id: string; name: string; levelNumber: number; }
 interface Node {
-  id: string; name: string; type: string;
+  id: string;
+  name: string;
+  type: string;
+  description?: string | null;
+  aliases?: string[];
+  tags?: string[];
   floor?: { name: string; levelNumber: number } | null;
 }
 interface RouteStep {
-  fromNode: Node; toNode: Node;
-  edge: { requiresStairs: boolean; requiresElevator: boolean; };
+  fromNode: Node;
+  toNode: Node;
+  edge: { requiresStairs: boolean; requiresElevator: boolean; requiresRamp?: boolean };
   instruction: string;
+  floorChange?: boolean;
+  targetFloorName?: string | null;
+}
+interface RouteWarning {
+  code: string;
+  message: string;
 }
 interface RouteResult {
-  path: Node[]; steps: RouteStep[];
-  totalDistanceEstimate: number; totalWalkTimeEstimate: number;
+  path: Node[];
+  steps: RouteStep[];
+  totalDistanceEstimate: number;
+  totalWalkTimeEstimate: number;
+  floorChanges?: number;
+  warnings?: RouteWarning[];
 }
 
 const TYPE_ICONS: Record<string, string> = {
@@ -51,7 +67,13 @@ export function IndoorNavigator({
   const fromNode = nodes.find((n) => n.id === fromId);
   const toNode = nodes.find((n) => n.id === toId);
   const filtered = query
-    ? nodes.filter((n) => n.name.toLowerCase().includes(query.toLowerCase()))
+    ? nodes.filter((n) => {
+        const haystack = [n.name, n.description, ...(n.aliases ?? []), ...(n.tags ?? []), n.floor?.name]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(query.toLowerCase());
+      })
     : nodes;
 
   async function navigate() {
@@ -99,10 +121,42 @@ export function IndoorNavigator({
 
   // ── Route view ───────────────────────────────────────────────────────────────
   if (route) {
+    if (route.steps.length === 0) {
+      return (
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl border border-slate-200 p-6">
+            <p className="text-xl font-bold text-[#141414] mb-2">You&apos;re already there</p>
+            <p className="text-sm text-slate-500 mb-4">{route.warnings?.[0]?.message ?? "Start and destination are the same."}</p>
+            <button onClick={reset} className="inline-flex items-center gap-2 text-sm font-semibold text-[#141414]">
+              <RotateCcw className="w-4 h-4" /> Choose another route
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     const step = route.steps[activeStep];
     const isLast = activeStep === route.steps.length - 1;
     return (
       <div className="space-y-6">
+        {route.warnings?.length ? (
+          <div className="space-y-2">
+            {route.warnings.map((warning) => (
+              <div
+                key={warning.code}
+                className={cn(
+                  "rounded-2xl px-5 py-4 text-sm border",
+                  warning.code === "ACCESSIBLE_ROUTE"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                    : "bg-amber-50 border-amber-200 text-amber-700"
+                )}
+              >
+                {warning.message}
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {/* Summary */}
         <div className="bg-[#141414] text-white rounded-3xl p-6 flex gap-8 relative overflow-hidden">
           <div>
@@ -126,9 +180,9 @@ export function IndoorNavigator({
           <div className="p-6">
             <div className="flex items-center justify-between mb-4">
               <span className="font-mono text-xs text-slate-400">Step {activeStep + 1} of {route.steps.length}</span>
-              {(step.edge.requiresStairs || step.edge.requiresElevator) && (
+              {(step.edge.requiresStairs || step.edge.requiresElevator || step.edge.requiresRamp || step.floorChange) && (
                 <span className="text-xs font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">
-                  {step.edge.requiresElevator ? "🛗 Elevator" : "🪜 Stairs"}
+                  {step.edge.requiresElevator ? "🛗 Elevator" : step.edge.requiresStairs ? "🪜 Stairs" : step.edge.requiresRamp ? "♿ Ramp" : "⇅ Floor change"}
                 </span>
               )}
             </div>

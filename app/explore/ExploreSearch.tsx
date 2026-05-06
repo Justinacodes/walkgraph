@@ -4,8 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 
-export function ExploreSearch() {
-  const [q, setQ] = useState("");
+export function ExploreSearch({ initialQuery = "" }: { initialQuery?: string }) {
+  const [q, setQ] = useState(initialQuery);
   const router = useRouter();
 
   function onSubmit(e: React.FormEvent) {

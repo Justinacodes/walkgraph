@@ -2,7 +2,7 @@
 
 **Stage:** build
 **Gate:** Gate 3 - Build sequence
-**Status:** blocked until Gate 2 owner approval
+**Status:** completed
 **Role:** code
 **Workflow:** Takomi `vibe-build`
 **Required Skills:** takomi, nextjs-standards, frontend-design
@@ -47,3 +47,11 @@ Build or harden the public visitor PWA experience for finding a published campus
 - Visitor can search a published building and route from a selected start to a destination.
 - Empty, missing route, and unpublished states are handled clearly.
 - TypeScript and project verification pass or blockers are documented.
+
+## Completion Notes
+
+- Public discovery/search is limited to published/public buildings.
+- Building detail and QR/manual navigation expose only unrestricted searchable nodes.
+- Destination and start search now match names, descriptions, aliases, tags, and floor names.
+- Visitor route UI handles already-there, accessibility warnings, and no-route states.
+- Verification passed with `pnpm exec tsc --noEmit` and `python scripts/vibe-verify.py`.

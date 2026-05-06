@@ -19,14 +19,22 @@ export default async function NavigatePage({
     include: {
       floors: { orderBy: { levelNumber: "asc" } },
       nodes: {
-        where: { searchable: true },
-        include: { floor: { select: { name: true, levelNumber: true } } },
+        where: { searchable: true, restricted: false },
+        select: {
+          id: true,
+          name: true,
+          type: true,
+          description: true,
+          aliases: true,
+          tags: true,
+          floor: { select: { name: true, levelNumber: true } },
+        },
         orderBy: { name: "asc" },
       },
     },
   });
 
-  if (!building || building.status !== "PUBLISHED") notFound();
+  if (!building || building.status !== "PUBLISHED" || building.visibility !== "PUBLIC") notFound();
 
   // Resolve QR checkpoint code → node
   let currentNodeId: string | null = null;

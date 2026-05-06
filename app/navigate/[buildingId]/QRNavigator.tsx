@@ -1,23 +1,39 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Navigation, Search, MapPin, ChevronRight, ArrowRight, Clock, Ruler, Accessibility, RotateCcw, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 import { formatWalkTime, formatDistance } from "@/lib/utils/format";
 
 interface Floor { id: string; name: string; levelNumber: number; }
 interface Node {
-  id: string; name: string; type: string;
+  id: string;
+  name: string;
+  type: string;
+  description?: string | null;
+  aliases?: string[];
+  tags?: string[];
   floor?: { name: string; levelNumber: number } | null;
 }
 interface RouteStep {
-  fromNode: Node; toNode: Node;
-  edge: { requiresStairs: boolean; requiresElevator: boolean; };
+  fromNode: Node;
+  toNode: Node;
+  edge: { requiresStairs: boolean; requiresElevator: boolean; requiresRamp?: boolean };
   instruction: string;
+  floorChange?: boolean;
+  targetFloorName?: string | null;
+}
+interface RouteWarning {
+  code: string;
+  message: string;
 }
 interface RouteResult {
-  path: Node[]; steps: RouteStep[];
-  totalDistanceEstimate: number; totalWalkTimeEstimate: number;
+  path: Node[];
+  steps: RouteStep[];
+  totalDistanceEstimate: number;
+  totalWalkTimeEstimate: number;
+  floorChanges?: number;
+  warnings?: RouteWarning[];
 }
 
 type Screen = "home" | "search" | "route";
@@ -49,7 +65,13 @@ export function QRNavigator({
   const toNode = nodes.find((n) => n.id === toId);
 
   const filteredNodes = query
-    ? nodes.filter((n) => n.name.toLowerCase().includes(query.toLowerCase()))
+    ? nodes.filter((n) => {
+        const haystack = [n.name, n.description, ...(n.aliases ?? []), ...(n.tags ?? []), n.floor?.name]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return haystack.includes(query.toLowerCase());
+      })
     : nodes;
 
   async function navigate() {
@@ -94,10 +116,42 @@ export function QRNavigator({
 
   // ── Route screen ────────────────────────────────────────────────────────────
   if (screen === "route" && route) {
+    if (route.steps.length === 0) {
+      return (
+        <div className="p-5">
+          <div className="bg-white rounded-3xl border border-slate-200 p-6">
+            <p className="text-xl font-bold text-[#141414] mb-2">You&apos;re already there</p>
+            <p className="text-sm text-slate-500 mb-4">{route.warnings?.[0]?.message ?? "Start and destination are the same."}</p>
+            <button onClick={reset} className="inline-flex items-center gap-2 text-sm font-semibold text-[#141414]">
+              <RotateCcw className="w-4 h-4" /> Choose another route
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     const currentStep = route.steps[activeStep];
     const isLast = activeStep === route.steps.length - 1;
     return (
       <div className="flex flex-col min-h-[calc(100vh-120px)]">
+        {route.warnings?.length ? (
+          <div className="p-5 pb-0 space-y-2">
+            {route.warnings.map((warning) => (
+              <div
+                key={warning.code}
+                className={cn(
+                  "rounded-2xl px-4 py-3 text-sm border",
+                  warning.code === "ACCESSIBLE_ROUTE"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
+                    : "bg-amber-50 border-amber-200 text-amber-700"
+                )}
+              >
+                {warning.message}
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         {/* Progress bar */}
         <div className="h-1 bg-slate-200">
           <div
@@ -133,9 +187,9 @@ export function QRNavigator({
               <ArrowRight className="w-4 h-4" />
               <span className="font-semibold text-[#141414]">{currentStep.toNode.name}</span>
             </div>
-            {(currentStep.edge.requiresStairs || currentStep.edge.requiresElevator) && (
+            {(currentStep.edge.requiresStairs || currentStep.edge.requiresElevator || currentStep.edge.requiresRamp || currentStep.floorChange) && (
               <div className="mt-4 inline-flex items-center gap-2 bg-blue-50 text-blue-700 text-sm font-semibold px-3 py-1.5 rounded-xl w-fit">
-                {currentStep.edge.requiresElevator ? "🛗 Elevator" : "🪜 Stairs"}
+                {currentStep.edge.requiresElevator ? "🛗 Elevator" : currentStep.edge.requiresStairs ? "🪜 Stairs" : currentStep.edge.requiresRamp ? "♿ Ramp" : "⇅ Floor change"}
               </div>
             )}
           </div>

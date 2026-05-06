@@ -171,6 +171,15 @@ Implemented in `lib/routing/*`, `app/api/route/route.ts`, and the admin route te
 - The route API separates `visitor` and `admin` contexts: visitors only route published/public buildings and searchable unrestricted nodes; admin route testing requires map-edit access.
 - The route tester posts with admin context, displays accessibility/fallback warnings, already-at-destination states, floor-change counts, and vertical step badges.
 
+## Build Task 11 Hardening Notes
+
+The public visitor surfaces now consume the existing visitor route contract more defensively:
+
+- Public building detail and QR navigation reject non-public or unpublished buildings.
+- Public search returns only published/public buildings and unrestricted searchable nodes.
+- Visitor destination/manual-start selection matches names, descriptions, aliases, tags, and floor labels.
+- Visitor route UI now handles `ALREADY_THERE`, accessibility success/fallback warnings, unreachable states, and floor-change badges without diverging from admin route rules.
+
 ## Definition of Done for Build Task 10
 
 Build task 10 implemented routing and instruction hardening without changing core rules; edge cases above are documented; verification passed for TypeScript, lint, and production build via `python scripts/vibe-verify.py`.

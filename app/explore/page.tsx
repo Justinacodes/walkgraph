@@ -1,15 +1,35 @@
 export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { db } from "@/lib/db";
-import { Search, Building2, MapPin } from "lucide-react";
+import { Building2, MapPin } from "lucide-react";
 import { BuildingStatusBadge } from "@/components/ui/Badge";
 import { ExploreSearch } from "./ExploreSearch";
 
 export const metadata = { title: "Explore Buildings" };
 
-export default async function ExplorePage() {
+export default async function ExplorePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const query = resolvedSearchParams.q?.trim();
+
   const buildings = await db.building.findMany({
-    where: { status: "PUBLISHED", visibility: "PUBLIC" },
+    where: {
+      status: "PUBLISHED",
+      visibility: "PUBLIC",
+      ...(query
+        ? {
+            OR: [
+              { name: { contains: query, mode: "insensitive" } },
+              { description: { contains: query, mode: "insensitive" } },
+              { address: { contains: query, mode: "insensitive" } },
+              { category: { contains: query, mode: "insensitive" } },
+            ],
+          }
+        : {}),
+    },
     include: {
       organization: { select: { name: true } },
       _count: { select: { nodes: true, floors: true } },
@@ -25,15 +45,20 @@ export default async function ExplorePage() {
         <Link href="/" className="font-display text-2xl text-white block mb-8">WalkGraph</Link>
         <h1 className="text-4xl font-bold mb-3">Explore Indoor Maps</h1>
         <p className="text-white/60 mb-6">Find buildings with indoor navigation</p>
-        <ExploreSearch />
+        <ExploreSearch initialQuery={query ?? ""} />
       </div>
 
       {/* Results */}
       <div className="px-8 lg:px-20 py-12">
+        {query ? (
+          <p className="font-mono text-xs uppercase tracking-widest text-slate-400 mb-6">
+            Search results for “{query}”
+          </p>
+        ) : null}
         {buildings.length === 0 ? (
           <div className="text-center py-16 text-slate-400">
             <Building2 className="w-10 h-10 mx-auto mb-3" />
-            <p>No published buildings yet.</p>
+            <p>{query ? "No published buildings matched your search." : "No published buildings yet."}</p>
           </div>
         ) : (
           <>

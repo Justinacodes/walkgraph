@@ -4,6 +4,10 @@
 
 The mapper graph editor now supports manual floor-based node placement, drag-to-update coordinates, node metadata editing for type/searchability/restriction/aliases/tags, edge creation/deletion including cross-floor edges, floor plan backgrounds, and CSV node import. This satisfies the v1 screen requirement that a mapper can build a basic multi-floor school/campus graph from the dashboard.
 
+## Task 11 Build Update
+
+The visitor PWA now hardens `/explore`, `/explore/[buildingId]`, and `/navigate/[buildingId]` around published/public-only discovery and routing. Public building search works from the explore page, building detail exposes only searchable unrestricted nodes, destination/manual-start search matches names, descriptions, aliases, tags, and floor names, QR/deep-link navigation respects the same visibility rules, already-at-destination states are explicit, and outdoor directions can deep-link to Google Maps when a building has coordinates or an address.
+
 ## Goal
 
 Define the build-ready screen architecture for WalkGraph v1 as a **mobile-first Next.js PWA** that supports:
