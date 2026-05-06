@@ -2,7 +2,7 @@
 
 **Stage:** build
 **Gate:** Gate 3 - Build sequence
-**Status:** blocked until Gate 2 owner approval
+**Status:** completed
 **Role:** code
 **Workflow:** Takomi `vibe-build`
 **Required Skills:** takomi, nextjs-standards
@@ -45,6 +45,6 @@ Implement or harden indoor route calculation, admin route testing, and human-rea
 
 ## Definition of Done
 
-- Admin can test a route before publish.
-- Route output includes path, estimates, floor changes, and readable instructions.
-- TypeScript and project verification pass or blockers are documented.
+- [x] Admin can test a route before publish.
+- [x] Route output includes path, estimates, floor changes, and readable instructions.
+- [x] TypeScript and project verification pass.

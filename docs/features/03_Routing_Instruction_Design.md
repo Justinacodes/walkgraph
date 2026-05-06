@@ -161,6 +161,16 @@ Quality rules: use names over coordinates, avoid compass-only language unless in
 - `directionHint` precedence is preserved.
 - Public visitor routing never exposes draft/private graph data.
 
+## Build Task 10 Implementation Notes
+
+Implemented in `lib/routing/*`, `app/api/route/route.ts`, and the admin route tester:
+
+- Dijkstra routing excludes restricted nodes/edges, honors one-way edges, rejects invalid/unflagged cross-floor edges, and uses deterministic edge/node ordering for equal-cost paths.
+- Accessibility mode runs a strict stair-free/accessibility-confirmed pass first, then allows non-stair fallback segments marked `accessible=false` only with an explicit warning.
+- Multi-floor route steps include `floorChange`, `targetFloorName`, and vertical connector instructions for stairs, elevators, ramps, or generic floor changes.
+- The route API separates `visitor` and `admin` contexts: visitors only route published/public buildings and searchable unrestricted nodes; admin route testing requires map-edit access.
+- The route tester posts with admin context, displays accessibility/fallback warnings, already-at-destination states, floor-change counts, and vertical step badges.
+
 ## Definition of Done for Build Task 10
 
-Build task 10 can implement routing and instruction changes without inventing core rules; edge cases above are documented; tests cover default routing, accessibility routing, one-way edges, restricted edges, multi-floor instructions, and no-route states.
+Build task 10 implemented routing and instruction hardening without changing core rules; edge cases above are documented; verification passed for TypeScript, lint, and production build via `python scripts/vibe-verify.py`.
